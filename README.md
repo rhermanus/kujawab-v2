@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kujawab v2
+
+A Q&A platform for Indonesian science olympiad problems. Users can browse problem sets by subject, view problems, read community-written answers, and vote on them.
+
+This is a rewrite of the original [Kujawab](https://kujawab.com) app (Laravel/MySQL) using modern tooling.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router, Server Components)
+- **Database:** PostgreSQL via Prisma (with `@prisma/adapter-pg`)
+- **Styling:** Tailwind CSS
+- **Math rendering:** KaTeX (replaces legacy CodeCogs LaTeX images)
+
+## Project Structure
+
+```
+app/
+  page.tsx                    # Home — subject list, top contributors, recent answers
+  [code]/page.tsx             # Problem set — list of problems
+  [code]/[number]/page.tsx    # Problem detail — answers, votes, comments
+  user/[username]/page.tsx    # User profile — stats and recent answers
+  login/page.tsx              # Login page (placeholder)
+components/
+  home-content.tsx            # Client component for home page accordion
+  html-content.tsx            # Renders HTML with CodeCogs→KaTeX conversion
+lib/
+  prisma.ts                   # Prisma client singleton
+  queries.ts                  # All data-fetching functions
+  format.ts                   # Utilities (timeAgo, categoryLabel)
+prisma/
+  schema.prisma               # Database schema
+scripts/
+  migrate-data.ts             # MySQL dump → PostgreSQL migration
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL
+
+### Setup
 
 ```bash
+npm install
+cp .env.example .env   # then fill in DATABASE_URL
+npx prisma migrate deploy
+npx prisma generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Data Migration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To migrate data from the original MySQL dump:
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Place kujawab.sql in the project root
+npx tsx scripts/migrate-data.ts
+```
