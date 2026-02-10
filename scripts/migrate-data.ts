@@ -1,21 +1,22 @@
 /**
- * Data migration script: MySQL (old kujawab) → PostgreSQL (new kujawab)
+ * Data migration script: MySQL SQL dump → PostgreSQL (via Prisma)
+ *
+ * Parses kujawab.sql (MySQL dump) directly — no MySQL server needed.
  *
  * Usage:
- *   1. npm install --save-dev mysql2 tsx
- *   2. Set env vars: MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE, DATABASE_URL
- *   3. Run: npx tsx scripts/migrate-data.ts
- *
- * This script migrates all data from the old MySQL database to the new PostgreSQL database.
- * Tables are migrated in dependency order to respect foreign key constraints.
+ *   1. Ensure PostgreSQL is running and DATABASE_URL is set in .env
+ *   2. Run: npx tsx scripts/migrate-data.ts
  */
 
 import "dotenv/config";
-import mysql from "mysql2/promise";
+import { readFileSync } from "fs";
+import { join } from "path";
+import pg from "pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaPg(process.env.DATABASE_URL!);
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL! });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 const CATEGORY_MAP: Record<number, string> = {
@@ -37,282 +38,745 @@ const NOTIFICATION_TYPE_MAP: Record<number, string> = {
   4: "ANSWER_DOWNVOTED",
 };
 
-async function getConnection() {
-  return mysql.createConnection({
-    host: process.env.MYSQL_HOST ?? "localhost",
-    user: process.env.MYSQL_USER ?? "root",
-    password: process.env.MYSQL_PASSWORD ?? "",
-    database: process.env.MYSQL_DATABASE ?? "kujawab",
-  });
+// ─── SQL Dump Parser ──────────────────────────────────────────────────
+
+function parseSqlDump(sql: string, tableName: string): Record<string, any>[][] {
+  // Find all INSERT INTO `tableName` statements and parse them
+  const results: Record<string, any>[][] = [];
+  const insertRegex = new RegExp(
+    `INSERT INTO \`${tableName}\`\\s*\\(([^)]+)\\)\\s*VALUES`,
+    "g"
+  );
+
+  let match: RegExpExecArray | null;
+  while ((match = insertRegex.exec(sql)) !== null) {
+    const columnsStr = match[1];
+    const columns = columnsStr
+      .split(",")
+      .map((c) => c.trim().replace(/`/g, ""));
+
+    // Find the VALUES data - everything from after "VALUES\n" until we hit ";\n"
+    const startIdx = match.index + match[0].length;
+    const endIdx = findStatementEnd(sql, startIdx);
+    const valuesStr = sql.substring(startIdx, endIdx);
+
+    const rows = parseValues(valuesStr, columns);
+    results.push(rows);
+  }
+
+  // Flatten all INSERT blocks for this table
+  return results;
 }
 
-async function migrateUsers(conn: mysql.Connection) {
+function findStatementEnd(sql: string, startIdx: number): number {
+  // Walk through the string respecting string literals to find the terminating semicolon
+  let i = startIdx;
+  while (i < sql.length) {
+    const ch = sql[i];
+    if (ch === "'") {
+      // Skip over string literal
+      i++;
+      while (i < sql.length) {
+        if (sql[i] === "\\") {
+          i += 2; // skip escaped char
+        } else if (sql[i] === "'") {
+          i++;
+          break;
+        } else {
+          i++;
+        }
+      }
+    } else if (ch === ";") {
+      return i;
+    } else {
+      i++;
+    }
+  }
+  return sql.length;
+}
+
+function parseValues(
+  valuesStr: string,
+  columns: string[]
+): Record<string, any>[] {
+  const rows: Record<string, any>[] = [];
+  let i = 0;
+
+  while (i < valuesStr.length) {
+    // Find next opening paren for a row
+    const parenIdx = valuesStr.indexOf("(", i);
+    if (parenIdx === -1) break;
+
+    i = parenIdx + 1;
+    const values: any[] = [];
+
+    while (i < valuesStr.length) {
+      // Skip whitespace
+      while (i < valuesStr.length && valuesStr[i] === " ") i++;
+
+      if (valuesStr[i] === ")") {
+        i++;
+        break;
+      }
+
+      if (valuesStr[i] === ",") {
+        i++;
+        // Skip whitespace after comma
+        while (i < valuesStr.length && valuesStr[i] === " ") i++;
+        continue;
+      }
+
+      if (valuesStr[i] === "'") {
+        // String value
+        i++;
+        let str = "";
+        while (i < valuesStr.length) {
+          if (valuesStr[i] === "\\") {
+            const next = valuesStr[i + 1];
+            if (next === "'") {
+              str += "'";
+            } else if (next === "\\") {
+              str += "\\";
+            } else if (next === "n") {
+              str += "\n";
+            } else if (next === "r") {
+              str += "\r";
+            } else if (next === "t") {
+              str += "\t";
+            } else if (next === "0") {
+              str += "\0";
+            } else {
+              str += next;
+            }
+            i += 2;
+          } else if (valuesStr[i] === "'") {
+            i++;
+            break;
+          } else {
+            str += valuesStr[i];
+            i++;
+          }
+        }
+        values.push(str);
+      } else if (
+        valuesStr.substring(i, i + 4).toUpperCase() === "NULL"
+      ) {
+        values.push(null);
+        i += 4;
+      } else {
+        // Numeric value
+        let num = "";
+        while (
+          i < valuesStr.length &&
+          valuesStr[i] !== "," &&
+          valuesStr[i] !== ")"
+        ) {
+          num += valuesStr[i];
+          i++;
+        }
+        const trimmed = num.trim();
+        values.push(
+          trimmed.includes(".") ? parseFloat(trimmed) : parseInt(trimmed, 10)
+        );
+      }
+    }
+
+    // Build row object
+    const row: Record<string, any> = {};
+    for (let c = 0; c < columns.length; c++) {
+      row[columns[c]] = c < values.length ? values[c] : null;
+    }
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function getTableRows(sql: string, tableName: string): Record<string, any>[] {
+  const blocks = parseSqlDump(sql, tableName);
+  return blocks.flat();
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────
+
+function parseDate(val: any): Date {
+  if (val == null) return new Date();
+  const s = String(val);
+  if (s === "0000-00-00 00:00:00" || s === "0000-00-00") {
+    return new Date("2015-01-01T00:00:00Z");
+  }
+  return new Date(s);
+}
+
+// ─── SQL escaping for raw inserts ─────────────────────────────────────
+
+function escSql(val: any): string {
+  if (val === null || val === undefined) return "NULL";
+  if (typeof val === "number") return String(val);
+  if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+  if (val instanceof Date) return `'${val.toISOString()}'`;
+  // Escape single quotes by doubling them
+  return `'${String(val).replace(/'/g, "''")}'`;
+}
+
+// ─── Batch raw INSERT helper ──────────────────────────────────────────
+
+async function batchInsert(
+  table: string,
+  columns: string[],
+  rows: string[][],
+  batchSize = 500
+) {
+  const colList = columns.map((c) => `"${c}"`).join(", ");
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const valuesList = batch.map((r) => `(${r.join(", ")})`).join(",\n");
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "${table}" (${colList}) VALUES\n${valuesList}`
+    );
+  }
+}
+
+// ─── Migration functions ──────────────────────────────────────────────
+
+async function migrateUsers(sql: string): Promise<Set<number>> {
   console.log("Migrating users...");
-  const [rows] = await conn.query("SELECT * FROM users ORDER BY id");
-  const users = rows as any[];
+  const rows = getTableRows(sql, "users");
 
-  for (const u of users) {
-    await prisma.user.create({
-      data: {
-        id: u.id,
-        firstName: u.firstname ?? "",
-        lastName: u.lastname ?? "",
-        username: u.username,
-        email: u.email,
-        password: u.password,
-        confirmed: Boolean(u.confirmed),
-        confirmationCode: u.confirmation_code ?? null,
-        rememberToken: u.remember_token ?? null,
-        profilePicture: u.profile_picture ?? "/profpic_placeholder.jpg",
-        bio: u.bio ?? null,
-        location: u.location ?? null,
-        website: u.website ?? null,
-        oauth2Id: u.oauth2_id ?? null,
-        oauth2Provider: u.oauth2_provider ?? null,
-        createdAt: u.created_at,
-        updatedAt: u.updated_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  const validIds = new Set<number>();
+
+  for (const u of rows) {
+    validIds.add(u.id);
+    insertRows.push([
+      escSql(u.id),
+      escSql(u.firstname ?? ""),
+      escSql(u.lastname ?? ""),
+      escSql(u.username),
+      escSql(u.email),
+      escSql(u.password),
+      escSql(Boolean(u.confirmed)),
+      escSql(u.confirmation_code ?? null),
+      escSql(u.remember_token ?? null),
+      escSql(u.profile_picture ?? "/profpic_placeholder.jpg"),
+      escSql(u.bio ?? null),
+      escSql(u.location ?? null),
+      escSql(u.website ?? null),
+      escSql(u.oauth2_id ?? null),
+      escSql(u.oauth2_provider ?? null),
+      escSql(parseDate(u.created_at)),
+      escSql(parseDate(u.updated_at)),
+    ]);
   }
-  console.log(`  Migrated ${users.length} users`);
+
+  await batchInsert(
+    "users",
+    [
+      "id",
+      "first_name",
+      "last_name",
+      "username",
+      "email",
+      "password",
+      "confirmed",
+      "confirmation_code",
+      "remember_token",
+      "profile_picture",
+      "bio",
+      "location",
+      "website",
+      "oauth2_id",
+      "oauth2_provider",
+      "created_at",
+      "updated_at",
+    ],
+    insertRows
+  );
+
+  console.log(`  Migrated ${rows.length} users`);
+  return validIds;
 }
 
-async function migrateAdmins(conn: mysql.Connection) {
+async function migrateAdmins(sql: string, validUserIds: Set<number>) {
   console.log("Migrating admins...");
-  const [rows] = await conn.query("SELECT * FROM admin ORDER BY id");
-  const admins = rows as any[];
+  const rows = getTableRows(sql, "admin");
+  let skipped = 0;
 
-  for (const a of admins) {
-    await prisma.admin.create({
-      data: {
-        id: a.id,
-        userId: a.user_id,
-      },
-    });
+  for (const a of rows) {
+    if (!validUserIds.has(a.user_id)) {
+      skipped++;
+      continue;
+    }
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "admins" ("id", "user_id") VALUES (${a.id}, ${a.user_id})`
+    );
   }
-  console.log(`  Migrated ${admins.length} admins`);
+
+  console.log(
+    `  Migrated ${rows.length - skipped} admins` +
+      (skipped ? ` (skipped ${skipped} with invalid user_id)` : "")
+  );
 }
 
-async function migrateProblemSets(conn: mysql.Connection) {
+async function migrateProblemSets(
+  sql: string
+): Promise<Set<number>> {
   console.log("Migrating problemsets...");
-  const [rows] = await conn.query("SELECT * FROM problemsets ORDER BY id");
-  const sets = rows as any[];
+  const rows = getTableRows(sql, "problemsets");
+  const validIds = new Set<number>();
 
-  for (const s of sets) {
-    await prisma.problemSet.create({
-      data: {
-        id: s.id,
-        category: s.category != null ? (CATEGORY_MAP[s.category] as any) : null,
-        code: s.code ?? null,
-        name: s.name,
-        problemCount: s.problem_count,
-        published: Boolean(s.published),
-        createdAt: s.created_at,
-        updatedAt: s.updated_at,
-      },
-    });
+  // Deduplicate codes: published rows always keep their code, duplicates get NULL
+  const publishedCodes = new Set<string>();
+  for (const s of rows) {
+    if (s.code && Boolean(s.published)) {
+      publishedCodes.add(s.code);
+    }
   }
-  console.log(`  Migrated ${sets.length} problemsets`);
+
+  const insertRows: string[][] = [];
+  let nulledCodes = 0;
+  const usedCodes = new Set<string>();
+  for (const s of rows) {
+    validIds.add(s.id);
+    const category =
+      s.category != null ? CATEGORY_MAP[s.category] ?? null : null;
+
+    let code: string | null = s.code === "" || s.code == null ? null : s.code;
+    if (code) {
+      if (usedCodes.has(code)) {
+        console.warn(`  WARN: Duplicate code '${code}' on problemset ${s.id} — setting to NULL`);
+        code = null;
+        nulledCodes++;
+      } else if (!Boolean(s.published) && publishedCodes.has(code)) {
+        console.warn(`  WARN: Unpublished duplicate code '${code}' on problemset ${s.id} — setting to NULL`);
+        code = null;
+        nulledCodes++;
+      } else {
+        usedCodes.add(code);
+      }
+    }
+
+    insertRows.push([
+      escSql(s.id),
+      category ? escSql(category) : "NULL",
+      escSql(code),
+      escSql(s.name),
+      escSql(s.problem_count),
+      escSql(Boolean(s.published)),
+      escSql(parseDate(s.created_at)),
+      escSql(parseDate(s.updated_at)),
+    ]);
+  }
+
+  // Category is an enum — need to cast
+  const colList = [
+    '"id"',
+    '"category"',
+    '"code"',
+    '"name"',
+    '"problem_count"',
+    '"published"',
+    '"created_at"',
+    '"updated_at"',
+  ].join(", ");
+
+  for (let i = 0; i < insertRows.length; i += 500) {
+    const batch = insertRows.slice(i, i + 500);
+    const valuesList = batch
+      .map((r) => {
+        // Replace the category value with a cast
+        const parts = [...r];
+        parts[1] = parts[1] === "NULL" ? "NULL" : `${parts[1]}::"Category"`;
+        return `(${parts.join(", ")})`;
+      })
+      .join(",\n");
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "problemsets" (${colList}) VALUES\n${valuesList}`
+    );
+  }
+
+  console.log(
+    `  Migrated ${rows.length} problemsets` +
+      (nulledCodes ? ` (nulled ${nulledCodes} duplicate codes on unpublished drafts)` : "")
+  );
+  return validIds;
 }
 
-async function migrateProblems(conn: mysql.Connection) {
+async function migrateProblems(
+  sql: string,
+  validProblemSetIds: Set<number>
+): Promise<Set<number>> {
   console.log("Migrating problems...");
-  const [rows] = await conn.query("SELECT * FROM problems ORDER BY id");
-  const problems = rows as any[];
+  const rows = getTableRows(sql, "problems");
+  const validIds = new Set<number>();
+  let skipped = 0;
 
-  for (const p of problems) {
-    await prisma.problem.create({
-      data: {
-        id: p.id,
-        problemSetId: p.problemset_id,
-        number: p.number ?? null,
-        description: p.description,
-        viewCount: p.view_count ?? 0,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const p of rows) {
+    if (!validProblemSetIds.has(p.problemset_id)) {
+      console.warn(
+        `  WARN: Skipping problem ${p.id} — invalid problemset_id ${p.problemset_id}`
+      );
+      skipped++;
+      continue;
+    }
+    validIds.add(p.id);
+    insertRows.push([
+      escSql(p.id),
+      escSql(p.problemset_id),
+      escSql(p.number ?? null),
+      escSql(p.description),
+      escSql(p.view_count ?? 0),
+      escSql(parseDate(p.created_at)),
+      escSql(parseDate(p.updated_at)),
+    ]);
   }
-  console.log(`  Migrated ${problems.length} problems`);
+
+  await batchInsert(
+    "problems",
+    [
+      "id",
+      "problemset_id",
+      "number",
+      "description",
+      "view_count",
+      "created_at",
+      "updated_at",
+    ],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${rows.length - skipped} problems` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
+  return validIds;
 }
 
-async function migrateExtraDescriptions(conn: mysql.Connection) {
+async function migrateExtraDescriptions(
+  sql: string,
+  validProblemSetIds: Set<number>
+) {
   console.log("Migrating extra_descriptions...");
-  const [rows] = await conn.query("SELECT * FROM extra_description ORDER BY id");
-  const extras = rows as any[];
+  const rows = getTableRows(sql, "extra_description");
+  let skipped = 0;
 
-  for (const e of extras) {
-    await prisma.extraDescription.create({
-      data: {
-        id: e.id,
-        problemSetId: e.problemset_id,
-        startNumber: e.start_number,
-        endNumber: e.end_number,
-        description: e.description,
-        createdAt: e.created_at,
-        updatedAt: e.updated_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const e of rows) {
+    if (!validProblemSetIds.has(e.problemset_id)) {
+      skipped++;
+      continue;
+    }
+    insertRows.push([
+      escSql(e.id),
+      escSql(e.problemset_id),
+      escSql(e.start_number),
+      escSql(e.end_number),
+      escSql(e.description),
+      escSql(parseDate(e.created_at)),
+      escSql(parseDate(e.updated_at)),
+    ]);
   }
-  console.log(`  Migrated ${extras.length} extra descriptions`);
+
+  await batchInsert(
+    "extra_descriptions",
+    [
+      "id",
+      "problemset_id",
+      "start_number",
+      "end_number",
+      "description",
+      "created_at",
+      "updated_at",
+    ],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${rows.length - skipped} extra descriptions` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
 }
 
-async function migrateAnswers(conn: mysql.Connection) {
+async function migrateAnswers(
+  sql: string,
+  validProblemIds: Set<number>,
+  validUserIds: Set<number>
+): Promise<Set<number>> {
   console.log("Migrating answers...");
-  const [rows] = await conn.query("SELECT * FROM answers ORDER BY id");
-  const answers = rows as any[];
+  const rows = getTableRows(sql, "answers");
+  const validIds = new Set<number>();
+  let skipped = 0;
 
-  for (const a of answers) {
-    await prisma.answer.create({
-      data: {
-        id: a.id,
-        problemId: a.problem_id,
-        authorId: a.author_id,
-        description: a.description,
-        createdAt: a.created_at,
-        updatedAt: a.updated_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const a of rows) {
+    if (!validProblemIds.has(a.problem_id)) {
+      console.warn(
+        `  WARN: Skipping answer ${a.id} — invalid problem_id ${a.problem_id}`
+      );
+      skipped++;
+      continue;
+    }
+    if (!validUserIds.has(a.author_id)) {
+      console.warn(
+        `  WARN: Skipping answer ${a.id} — invalid author_id ${a.author_id}`
+      );
+      skipped++;
+      continue;
+    }
+    validIds.add(a.id);
+    insertRows.push([
+      escSql(a.id),
+      escSql(a.problem_id),
+      escSql(a.author_id),
+      escSql(a.description),
+      escSql(parseDate(a.created_at)),
+      escSql(parseDate(a.updated_at)),
+    ]);
   }
-  console.log(`  Migrated ${answers.length} answers`);
+
+  await batchInsert(
+    "answers",
+    ["id", "problem_id", "author_id", "description", "created_at", "updated_at"],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${rows.length - skipped} answers` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
+  return validIds;
 }
 
-async function migrateComments(conn: mysql.Connection) {
+async function migrateComments(
+  sql: string,
+  validAnswerIds: Set<number>,
+  validUserIds: Set<number>
+) {
   console.log("Migrating comments...");
-  const [rows] = await conn.query("SELECT * FROM comments ORDER BY id");
-  const comments = rows as any[];
+  const rows = getTableRows(sql, "comments");
+  let skipped = 0;
 
-  for (const c of comments) {
-    await prisma.comment.create({
-      data: {
-        id: c.id,
-        answerId: c.answer_id,
-        authorId: c.author_id,
-        content: c.content,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const c of rows) {
+    if (!validAnswerIds.has(c.answer_id)) {
+      skipped++;
+      continue;
+    }
+    if (!validUserIds.has(c.author_id)) {
+      skipped++;
+      continue;
+    }
+    insertRows.push([
+      escSql(c.id),
+      escSql(c.answer_id),
+      escSql(c.author_id),
+      escSql(c.content),
+      escSql(parseDate(c.created_at)),
+      escSql(parseDate(c.updated_at)),
+    ]);
   }
-  console.log(`  Migrated ${comments.length} comments`);
+
+  await batchInsert(
+    "comments",
+    ["id", "answer_id", "author_id", "content", "created_at", "updated_at"],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${rows.length - skipped} comments` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
 }
 
-async function migrateVotes(conn: mysql.Connection) {
+async function migrateVotes(
+  sql: string,
+  validAnswerIds: Set<number>,
+  validUserIds: Set<number>
+) {
   console.log("Migrating votes (upvotes + downvotes)...");
 
-  // Track seen pairs to deduplicate
   const seen = new Set<string>();
-  let count = 0;
+  const insertRows: string[][] = [];
+  let skipped = 0;
 
-  const [upRows] = await conn.query("SELECT * FROM upvotes ORDER BY id");
-  for (const u of upRows as any[]) {
+  // Upvotes
+  const upRows = getTableRows(sql, "upvotes");
+  for (const u of upRows) {
+    if (!validAnswerIds.has(u.answer_id) || !validUserIds.has(u.voter_id)) {
+      skipped++;
+      continue;
+    }
     const key = `${u.answer_id}-${u.voter_id}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    await prisma.vote.create({
-      data: {
-        answerId: u.answer_id,
-        voterId: u.voter_id,
-        value: 1,
-      },
-    });
-    count++;
+    insertRows.push([
+      escSql(u.answer_id),
+      escSql(u.voter_id),
+      escSql(1),
+    ]);
   }
 
-  const [downRows] = await conn.query("SELECT * FROM downvotes ORDER BY id");
-  for (const d of downRows as any[]) {
+  // Downvotes
+  const downRows = getTableRows(sql, "downvotes");
+  for (const d of downRows) {
+    if (!validAnswerIds.has(d.answer_id) || !validUserIds.has(d.voter_id)) {
+      skipped++;
+      continue;
+    }
     const key = `${d.answer_id}-${d.voter_id}`;
     if (seen.has(key)) {
-      // User has both upvote and downvote — skip the downvote (upvote takes precedence)
-      console.warn(`  Conflict: user ${d.voter_id} has both up/downvote on answer ${d.answer_id}, keeping upvote`);
+      console.warn(
+        `  WARN: Conflict — user ${d.voter_id} has both up/downvote on answer ${d.answer_id}, keeping upvote`
+      );
       continue;
     }
     seen.add(key);
-    await prisma.vote.create({
-      data: {
-        answerId: d.answer_id,
-        voterId: d.voter_id,
-        value: -1,
-      },
-    });
-    count++;
+    insertRows.push([
+      escSql(d.answer_id),
+      escSql(d.voter_id),
+      escSql(-1),
+    ]);
   }
 
-  console.log(`  Migrated ${count} votes`);
+  await batchInsert(
+    "votes",
+    ["answer_id", "voter_id", "value"],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${insertRows.length} votes` +
+      (skipped ? ` (skipped ${skipped} with invalid FKs)` : "")
+  );
 }
 
-async function migrateProblemHistory(conn: mysql.Connection) {
+async function migrateProblemHistory(
+  sql: string,
+  validProblemIds: Set<number>,
+  validUserIds: Set<number>
+) {
   console.log("Migrating problem_history...");
-  const [rows] = await conn.query("SELECT * FROM problem_history ORDER BY id");
-  const history = rows as any[];
+  const rows = getTableRows(sql, "problem_history");
+  let skipped = 0;
 
-  for (const h of history) {
-    await prisma.problemHistory.create({
-      data: {
-        id: h.id,
-        problemId: h.problem_id,
-        authorId: h.author_id,
-        description: h.description,
-        createdAt: h.time,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const h of rows) {
+    if (!validProblemIds.has(h.problem_id)) {
+      skipped++;
+      continue;
+    }
+    if (!validUserIds.has(h.author_id)) {
+      skipped++;
+      continue;
+    }
+    insertRows.push([
+      escSql(h.id),
+      escSql(h.problem_id),
+      escSql(h.author_id),
+      escSql(h.description),
+      escSql(parseDate(h.time)),
+    ]);
   }
-  console.log(`  Migrated ${history.length} problem history entries`);
+
+  await batchInsert(
+    "problem_history",
+    ["id", "problem_id", "author_id", "description", "created_at"],
+    insertRows
+  );
+
+  console.log(
+    `  Migrated ${rows.length - skipped} problem history entries` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
 }
 
-async function migrateNotifications(conn: mysql.Connection) {
+async function migrateNotifications(
+  sql: string,
+  validUserIds: Set<number>
+) {
   console.log("Migrating notifications...");
-  const [rows] = await conn.query("SELECT * FROM notifications ORDER BY id");
-  const notifications = rows as any[];
-
+  const rows = getTableRows(sql, "notifications");
   let skipped = 0;
-  for (const n of notifications) {
+
+  const colList = [
+    '"id"',
+    '"type"',
+    '"sent_time"',
+    '"receiver_id"',
+    '"sender_id"',
+    '"params"',
+    '"read"',
+  ].join(", ");
+
+  const insertRows: string[][] = [];
+  for (const n of rows) {
     const typeName = NOTIFICATION_TYPE_MAP[n.type];
     if (!typeName) {
       skipped++;
       continue;
     }
+    if (!validUserIds.has(n.receiver_id) || !validUserIds.has(n.sender_id)) {
+      skipped++;
+      continue;
+    }
 
-    let params: any = null;
+    let params: string = "NULL";
     if (n.params) {
       try {
-        params = JSON.parse(n.params);
+        JSON.parse(n.params); // validate
+        params = escSql(n.params); // store as valid JSON string
       } catch {
-        // Old data might not be valid JSON, store as-is wrapped in an object
-        params = { raw: n.params };
+        params = escSql(JSON.stringify({ raw: n.params }));
       }
     }
 
-    await prisma.notification.create({
-      data: {
-        id: n.id,
-        type: typeName as any,
-        sentTime: n.sent_time,
-        receiverId: n.receiver_id,
-        senderId: n.sender_id,
-        params,
-        read: Boolean(n.read),
-      },
-    });
+    insertRows.push([
+      escSql(n.id),
+      `'${typeName}'::"NotificationType"`,
+      escSql(parseDate(n.sent_time)),
+      escSql(n.receiver_id),
+      escSql(n.sender_id),
+      params,
+      escSql(Boolean(n.read)),
+    ]);
   }
-  console.log(`  Migrated ${notifications.length - skipped} notifications (skipped ${skipped} with unknown type)`);
+
+  // Custom batch insert because of enum cast
+  for (let i = 0; i < insertRows.length; i += 500) {
+    const batch = insertRows.slice(i, i + 500);
+    const valuesList = batch.map((r) => `(${r.join(", ")})`).join(",\n");
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "notifications" (${colList}) VALUES\n${valuesList}`
+    );
+  }
+
+  console.log(
+    `  Migrated ${insertRows.length} notifications` +
+      (skipped ? ` (skipped ${skipped})` : "")
+  );
 }
 
-async function migratePasswordReminders(conn: mysql.Connection) {
+async function migratePasswordReminders(sql: string) {
   console.log("Migrating password_reminders...");
-  const [rows] = await conn.query("SELECT * FROM password_reminders ORDER BY created_at");
-  const reminders = rows as any[];
+  const rows = getTableRows(sql, "password_reminders");
 
-  for (const r of reminders) {
-    await prisma.passwordReminder.create({
-      data: {
-        email: r.email,
-        token: r.token,
-        createdAt: r.created_at,
-      },
-    });
+  const insertRows: string[][] = [];
+  for (const r of rows) {
+    insertRows.push([
+      escSql(r.email),
+      escSql(r.token),
+      escSql(parseDate(r.created_at)),
+    ]);
   }
-  console.log(`  Migrated ${reminders.length} password reminders`);
+
+  await batchInsert(
+    "password_reminders",
+    ["email", "token", "created_at"],
+    insertRows
+  );
+
+  console.log(`  Migrated ${rows.length} password reminders`);
 }
 
 async function resetSequences() {
@@ -339,23 +803,32 @@ async function resetSequences() {
   console.log("  Sequences reset");
 }
 
-async function main() {
-  console.log("Starting migration from MySQL to PostgreSQL...\n");
+// ─── Main ─────────────────────────────────────────────────────────────
 
-  const conn = await getConnection();
+async function main() {
+  console.log("Starting migration from MySQL dump to PostgreSQL...\n");
+
+  const dumpPath = join(__dirname, "..", "kujawab.sql");
+  console.log(`Reading SQL dump from ${dumpPath}...`);
+  const sql = readFileSync(dumpPath, "utf-8");
+  console.log(`  Read ${(sql.length / 1024 / 1024).toFixed(1)} MB\n`);
 
   try {
-    await migrateUsers(conn);
-    await migrateAdmins(conn);
-    await migrateProblemSets(conn);
-    await migrateProblems(conn);
-    await migrateExtraDescriptions(conn);
-    await migrateAnswers(conn);
-    await migrateComments(conn);
-    await migrateVotes(conn);
-    await migrateProblemHistory(conn);
-    await migrateNotifications(conn);
-    await migratePasswordReminders(conn);
+    const validUserIds = await migrateUsers(sql);
+    await migrateAdmins(sql, validUserIds);
+    const validProblemSetIds = await migrateProblemSets(sql);
+    const validProblemIds = await migrateProblems(sql, validProblemSetIds);
+    await migrateExtraDescriptions(sql, validProblemSetIds);
+    const validAnswerIds = await migrateAnswers(
+      sql,
+      validProblemIds,
+      validUserIds
+    );
+    await migrateComments(sql, validAnswerIds, validUserIds);
+    await migrateVotes(sql, validAnswerIds, validUserIds);
+    await migrateProblemHistory(sql, validProblemIds, validUserIds);
+    await migrateNotifications(sql, validUserIds);
+    await migratePasswordReminders(sql);
     await resetSequences();
 
     console.log("\nMigration complete!");
@@ -363,7 +836,6 @@ async function main() {
     console.error("\nMigration failed:", error);
     process.exit(1);
   } finally {
-    await conn.end();
     await prisma.$disconnect();
   }
 }
