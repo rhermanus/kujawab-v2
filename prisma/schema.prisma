@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Category {
+  KOMPUTER    // 1
+  MATEMATIKA  // 2
+  FISIKA      // 3
+  KIMIA       // 4
+  BIOLOGI     // 5
+  ASTRONOMI   // 6
+  KEBUMIAN    // 7
+  EKONOMI     // 8
+  GEOGRAFI    // 9
+}
+
+enum NotificationType {
+  NEW_ANSWER        // someone answered a problem you follow
+  NEW_COMMENT       // someone commented on your answer
+  ANSWER_UPVOTED    // your answer was upvoted
+  ANSWER_DOWNVOTED  // your answer was downvoted
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  firstName         String    @map("first_name") @db.VarChar(50)
+  lastName          String    @map("last_name") @db.VarChar(50)
+  username          String    @unique @db.VarChar(20)
+  email             String    @unique @db.VarChar(100)
+  password          String    @db.VarChar(60)
+  confirmed         Boolean   @default(false)
+  confirmationCode  String?   @map("confirmation_code") @db.VarChar(100)
+  rememberToken     String?   @map("remember_token") @db.VarChar(100)
+  profilePicture    String?   @default("/profpic_placeholder.jpg") @map("profile_picture") @db.VarChar(100)
+  bio               String?   @db.VarChar(160)
+  location          String?   @db.VarChar(30)
+  website           String?   @db.VarChar(100)
+  oauth2Id          String?   @unique @map("oauth2_id") @db.VarChar(25)
+  oauth2Provider    String?   @map("oauth2_provider") @db.VarChar(25)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  answers               Answer[]
+  comments              Comment[]
+  votes                 Vote[]
+  problemEdits          ProblemHistory[]
+  admin                 Admin?
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+
+  @@map("users")
+}
+
+model Admin {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique @map("user_id")
+  user   User @relation(fields: [userId], references: [id])
+
+  @@map("admins")
+}
+
+model ProblemSet {
+  id           Int       @id @default(autoincrement())
+  category     Category?
+  code         String?   @unique @db.VarChar(15)
+  name         String    @db.VarChar(100)
+  problemCount Int       @map("problem_count")
+  published    Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  problems          Problem[]
+  extraDescriptions ExtraDescription[]
+
+  @@map("problemsets")
+}
+
+model Problem {
+  id           Int      @id @default(autoincrement())
+  problemSetId Int      @map("problemset_id")
+  number       Int?
+  description  String   @db.Text
+  viewCount    Int      @default(0) @map("view_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  problemSet ProblemSet      @relation(fields: [problemSetId], references: [id])
+  answers    Answer[]
+  history    ProblemHistory[]
+
+  @@map("problems")
+}
+
+model ExtraDescription {
+  id           Int      @id @default(autoincrement())
+  problemSetId Int      @map("problemset_id")
+  startNumber  Int      @map("start_number")
+  endNumber    Int      @map("end_number")
+  description  String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  problemSet ProblemSet @relation(fields: [problemSetId], references: [id])
+
+  @@map("extra_descriptions")
+}
+
+model Answer {
+  id          Int      @id @default(autoincrement())
+  problemId   Int      @map("problem_id")
+  authorId    Int      @map("author_id")
+  description String   @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  problem  Problem   @relation(fields: [problemId], references: [id])
+  author   User      @relation(fields: [authorId], references: [id])
+  comments Comment[]
+  votes    Vote[]
+
+  @@map("answers")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  answerId  Int      @map("answer_id")
+  authorId  Int      @map("author_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  answer Answer @relation(fields: [answerId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@map("comments")
+}
+
+model Vote {
+  id       Int @id @default(autoincrement())
+  answerId Int @map("answer_id")
+  voterId  Int @map("voter_id")
+  value    Int // +1 for upvote, -1 for downvote
+
+  answer Answer @relation(fields: [answerId], references: [id])
+  voter  User   @relation(fields: [voterId], references: [id])
+
+  @@unique([answerId, voterId])
+  @@map("votes")
+}
+
+model ProblemHistory {
+  id          Int      @id @default(autoincrement())
+  problemId   Int      @map("problem_id")
+  authorId    Int      @map("author_id")
+  description String   @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id])
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@map("problem_history")
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  type       NotificationType
+  sentTime   DateTime         @map("sent_time")
+  receiverId Int              @map("receiver_id")
+  senderId   Int              @map("sender_id")
+  params     Json?
+  read       Boolean          @default(false)
+
+  receiver User @relation("NotificationReceiver", fields: [receiverId], references: [id])
+  sender   User @relation("NotificationSender", fields: [senderId], references: [id])
+
+  @@map("notifications")
+}
+
+model PasswordReminder {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(255)
+  token     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([token])
+  @@map("password_reminders")
+}
