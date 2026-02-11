@@ -35,7 +35,7 @@ export default async function ProblemPage({
       {extraDescription && (
         <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-5">
           <HtmlContent
-            className="text-sm prose dark:prose-invert max-w-none"
+            className=""
             html={extraDescription.description}
           />
         </div>
@@ -44,7 +44,7 @@ export default async function ProblemPage({
       {/* Problem */}
       <div className="border rounded-lg p-6 mb-8">
         <HtmlContent
-          className="prose dark:prose-invert max-w-none"
+          className=""
           html={problem.description}
         />
       </div>
@@ -80,7 +80,7 @@ export default async function ProblemPage({
 
                 {/* Answer content */}
                 <HtmlContent
-                  className="text-sm prose dark:prose-invert max-w-none"
+                  className=""
                   html={answer.description}
                 />
               </div>

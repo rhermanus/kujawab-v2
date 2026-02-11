@@ -123,13 +123,75 @@
   }
 }
 
-/* Restore table borders for user-generated HTML content */
-.html-content table[border] {
+/* ── User-generated HTML content ── */
+.html-content {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.html-content p {
+  margin: 0 0 0.75em;
+}
+.html-content p:last-child {
+  margin-bottom: 0;
+}
+
+.html-content h3,
+.html-content h4 {
+  font-weight: 600;
+  margin: 1.25em 0 0.5em;
+}
+.html-content h3 { font-size: 1.05em; }
+.html-content h4 { font-size: 1em; }
+
+.html-content ul,
+.html-content ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.75em;
+}
+.html-content ul { list-style-type: disc; }
+.html-content ol { list-style-type: decimal; }
+.html-content li { margin-bottom: 0.2em; }
+
+.html-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.html-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tables */
+.html-content table {
   border-collapse: collapse;
-  border: 1px solid currentColor;
+  margin: 0.75em 0;
+  font-size: 0.85em;
+}
+.html-content table[border] {
+  border: 1px solid #d1d5db;
 }
 .html-content table[border] th,
 .html-content table[border] td {
-  border: 1px solid currentColor;
-  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+}
+.html-content th,
+.html-content td {
+  padding: 0.35rem 0.6rem;
+}
+.html-content th {
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .html-content a { color: #60a5fa; }
+  .html-content th { background-color: rgba(255, 255, 255, 0.06); }
+  .html-content table[border],
+  .html-content table[border] th,
+  .html-content table[border] td {
+    border-color: #444;
+  }
 }

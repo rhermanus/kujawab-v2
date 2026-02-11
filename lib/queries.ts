@@ -189,6 +189,29 @@ export async function getUserStats(userId: number) {
   };
 }
 
+// ─── Search ──────────────────────────────────────────────────────────
+
+export async function searchProblems(query: string, limit = 50) {
+  return prisma.problem.findMany({
+    where: {
+      description: { contains: query, mode: "insensitive" },
+      problemSet: { published: true, code: { not: null } },
+    },
+    take: limit,
+    select: {
+      id: true,
+      number: true,
+      description: true,
+      _count: { select: { answers: true } },
+      problemSet: {
+        select: { code: true, name: true },
+      },
+    },
+  });
+}
+
+// ─── User profile page ───────────────────────────────────────────────
+
 export async function getUserRecentAnswers(userId: number, limit: number) {
   return prisma.answer.findMany({
     where: {
