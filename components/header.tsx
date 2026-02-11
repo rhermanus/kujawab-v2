@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { auth, signOut } from "@/auth";
 
-export default function Header() {
+export default async function Header() {
+  const session = await auth();
+
   return (
     <header className="sticky top-0 z-50 bg-[#0098A6] shadow-md">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
@@ -22,12 +25,31 @@ export default function Header() {
           >
             Beranda
           </Link>
-          <Link
-            href="/login"
-            className="text-white/80 hover:text-white"
-          >
-            Masuk
-          </Link>
+          {session?.user ? (
+            <>
+              <span className="text-white/90">{session.user.name}</span>
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="text-white/80 hover:text-white"
+                >
+                  Keluar
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="text-white/80 hover:text-white"
+            >
+              Masuk
+            </Link>
+          )}
         </nav>
       </div>
     </header>
