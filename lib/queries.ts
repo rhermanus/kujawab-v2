@@ -41,13 +41,13 @@ export async function getPublishedProblemSetsByCategory() {
 
 export async function getTopContributors(limit: number) {
   const rows = await prisma.$queryRaw<
-    { username: string; points: bigint }[]
+    { username: string; first_name: string; last_name: string; profile_picture: string | null; points: bigint }[]
   >`
-    SELECT u.username, COALESCE(SUM(v.value), 0) AS points
+    SELECT u.username, u.first_name, u.last_name, u.profile_picture, COALESCE(SUM(v.value), 0) AS points
     FROM users u
     JOIN answers a ON a.author_id = u.id
     JOIN votes v ON v.answer_id = a.id
-    GROUP BY u.id, u.username
+    GROUP BY u.id, u.username, u.first_name, u.last_name, u.profile_picture
     HAVING SUM(v.value) > 0
     ORDER BY points DESC
     LIMIT ${limit}
@@ -55,12 +55,18 @@ export async function getTopContributors(limit: number) {
 
   return rows.map((r) => ({
     username: r.username,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    profilePicture: r.profile_picture,
     points: Number(r.points),
   }));
 }
 
 export async function getRecentAnswers(limit: number) {
   return prisma.answer.findMany({
+    where: {
+      problem: { problemSet: { published: true, code: { not: null } } },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
@@ -75,7 +81,7 @@ export async function getRecentAnswers(limit: number) {
         },
       },
       author: {
-        select: { username: true },
+        select: { username: true, firstName: true, lastName: true },
       },
     },
   });
@@ -117,12 +123,12 @@ export async function getProblemByCodeAndNumber(code: string, number: number) {
     include: {
       answers: {
         include: {
-          author: { select: { username: true } },
+          author: { select: { username: true, firstName: true, lastName: true } },
           votes: { select: { value: true } },
           comments: {
             orderBy: { createdAt: "asc" },
             include: {
-              author: { select: { username: true } },
+              author: { select: { username: true, firstName: true, lastName: true } },
             },
           },
         },
@@ -185,11 +191,15 @@ export async function getUserStats(userId: number) {
 
 export async function getUserRecentAnswers(userId: number, limit: number) {
   return prisma.answer.findMany({
-    where: { authorId: userId },
+    where: {
+      authorId: userId,
+      problem: { problemSet: { published: true, code: { not: null } } },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
       id: true,
+      description: true,
       createdAt: true,
       problem: {
         select: {

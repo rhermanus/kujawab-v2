@@ -122,3 +122,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Restore table borders for user-generated HTML content */
+.html-content table[border] {
+  border-collapse: collapse;
+  border: 1px solid currentColor;
+}
+.html-content table[border] th,
+.html-content table[border] td {
+  border: 1px solid currentColor;
+  padding: 0.25rem 0.5rem;
+}

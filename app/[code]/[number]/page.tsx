@@ -65,7 +65,7 @@ export default async function ProblemPage({
                       href={`/user/${answer.author.username}`}
                       className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      {answer.author.username}
+                      {answer.author.firstName} {answer.author.lastName}
                     </Link>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
                       {timeAgo(answer.createdAt)}
@@ -95,10 +95,10 @@ export default async function ProblemPage({
                           href={`/user/${comment.author.username}`}
                           className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          {comment.author.username}
+                          {comment.author.firstName} {comment.author.lastName}
                         </Link>
                         {" — "}
-                        {comment.content}
+                        <HtmlContent html={comment.content} className="inline" />
                       </span>
                       <span className="text-xs text-zinc-500 ml-2">{timeAgo(comment.createdAt)}</span>
                     </div>

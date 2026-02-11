@@ -3,6 +3,19 @@ import { notFound } from "next/navigation";
 import { getUserByUsername, getUserStats, getUserRecentAnswers } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 
+// TODO: Remove once images are imported locally
+const PROD_ORIGIN = "https://www.kujawab.com";
+function profilePicUrl(path: string | null): string {
+  const p = path ?? "/profpic_placeholder.jpg";
+  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
+}
+
+function snippetFromHtml(html: string, maxLength = 150): string {
+  const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
+}
+
 export default async function UserProfilePage({
   params,
 }: {
@@ -29,7 +42,7 @@ export default async function UserProfilePage({
       {/* Profile header */}
       <div className="flex items-start gap-5 mb-8">
         <img
-          src={user.profilePicture ?? "/profpic_placeholder.jpg"}
+          src={profilePicUrl(user.profilePicture)}
           alt={`Foto profil ${user.username}`}
           className="w-20 h-20 rounded-full object-cover border"
         />
@@ -75,26 +88,38 @@ export default async function UserProfilePage({
       <h2 className="text-lg font-semibold mb-4">Jawaban terbaru</h2>
       {recentAnswers.length > 0 ? (
         <div className="border rounded-lg divide-y">
-          {recentAnswers.map((answer) => (
-            <div key={answer.id} className="p-4">
-              <div className="font-medium">
-                Soal Nomor {answer.problem.number} —{" "}
-                {answer.problem.problemSet.code ? (
+          {recentAnswers.map((answer) => {
+            const problemUrl = answer.problem.problemSet.code && answer.problem.number
+              ? `/${answer.problem.problemSet.code}/${answer.problem.number}`
+              : null;
+
+            return (
+              <div key={answer.id} className="p-4">
+                <div className="font-medium">
                   <Link
                     href={`/${answer.problem.problemSet.code}`}
                     className="text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    {answer.problem.problemSet.name}
+                    {answer.problem.problemSet.name}, nomor {answer.problem.number}
                   </Link>
-                ) : (
-                  answer.problem.problemSet.name
-                )}
+                </div>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                  {snippetFromHtml(answer.description)}{" "}
+                  {problemUrl && (
+                    <Link
+                      href={problemUrl}
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      lihat selengkapnya
+                    </Link>
+                  )}
+                </p>
+                <div className="text-xs text-zinc-500 mt-1">
+                  {timeAgo(answer.createdAt)}
+                </div>
               </div>
-              <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                {timeAgo(answer.createdAt)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="text-zinc-600 dark:text-zinc-400">Belum ada jawaban.</p>

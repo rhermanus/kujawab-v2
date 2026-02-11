@@ -12,7 +12,17 @@ interface ProblemSetEntry {
 
 interface Contributor {
   username: string;
+  firstName: string;
+  lastName: string;
+  profilePicture: string | null;
   points: number;
+}
+
+// TODO: Remove once images are imported locally
+const PROD_ORIGIN = "https://www.kujawab.com";
+function profilePicUrl(path: string | null): string {
+  const p = path ?? "/profpic_placeholder.jpg";
+  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
 }
 
 interface RecentAnswer {
@@ -21,6 +31,8 @@ interface RecentAnswer {
   problemSetCode: string | null;
   problemSetName: string;
   authorUsername: string;
+  authorFirstName: string;
+  authorLastName: string;
   timeAgo: string;
 }
 
@@ -101,18 +113,25 @@ export default function HomeContent({
       <aside className="space-y-6">
         <div className="border rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/40">
           <h3 className="font-semibold mb-3">Kontributor teraktif</h3>
-          <ol className="space-y-2 text-sm">
-            {topContributors.map((c, i) => (
-              <li key={c.username} className="flex items-center justify-between">
-                <div>
-                  <Link href={`/user/${c.username}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    {i + 1}. {c.username}
-                  </Link>
-                </div>
-                <div className="text-zinc-600 dark:text-zinc-400">{c.points} pts</div>
+          <ul className="space-y-3 text-sm">
+            {topContributors.map((c) => (
+              <li key={c.username}>
+                <Link href={`/user/${c.username}`} className="flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 -mx-2 px-2 py-1 rounded-md">
+                  <img
+                    src={profilePicUrl(c.profilePicture)}
+                    alt={`${c.firstName} ${c.lastName}`}
+                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-blue-600 dark:text-blue-400 truncate">
+                      {c.firstName} {c.lastName}
+                    </div>
+                    <div className="text-xs text-zinc-500">{c.points} pts</div>
+                  </div>
+                </Link>
               </li>
             ))}
-          </ol>
+          </ul>
         </div>
 
         <div className="border rounded-lg p-4 bg-zinc-50 dark:bg-zinc-900/40">
@@ -121,19 +140,14 @@ export default function HomeContent({
             {recentAnswers.map((r) => (
               <li key={r.id}>
                 <div className="font-medium">
-                  Soal Nomor {r.problemNumber} —{" "}
-                  {r.problemSetCode ? (
-                    <Link href={`/${r.problemSetCode}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                      {r.problemSetName}
-                    </Link>
-                  ) : (
-                    r.problemSetName
-                  )}
+                  <Link href={`/${r.problemSetCode}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                    {r.problemSetName}, nomor {r.problemNumber}
+                  </Link>
                 </div>
                 <div className="text-zinc-600 dark:text-zinc-400 text-xs">
                   oleh{" "}
                   <Link href={`/user/${r.authorUsername}`} className="hover:underline">
-                    {r.authorUsername}
+                    {r.authorFirstName} {r.authorLastName}
                   </Link>{" "}
                   · {r.timeAgo}
                 </div>

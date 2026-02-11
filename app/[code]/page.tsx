@@ -27,10 +27,7 @@ export default async function ProblemSetPage({
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold mb-1">{problemSet.name}</h1>
-      <p className="text-zinc-600 dark:text-zinc-400 mb-8">
-        Set soal dengan {problemSet.problems.length} soal
-      </p>
+      <h1 className="text-2xl font-bold mb-8">{problemSet.name}</h1>
 
       <div className="space-y-8">
         {problemSet.problems.map((problem) => (
@@ -45,13 +42,13 @@ export default async function ProblemSetPage({
             )}
 
             <div className="border rounded-lg p-6">
-              <h2 className="font-semibold mb-3">
-                Soal {problem.number}
-              </h2>
-              <HtmlContent
-                className="mb-4 prose dark:prose-invert max-w-none"
-                html={problem.description}
-              />
+              <div className="flex gap-2 mb-4">
+                <span className="font-semibold shrink-0">{problem.number}.</span>
+                <HtmlContent
+                  className="prose dark:prose-invert max-w-none"
+                  html={problem.description}
+                />
+              </div>
 
               <Link
                 href={`/${code}/${problem.number}`}

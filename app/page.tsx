@@ -15,6 +15,8 @@ export default async function Home() {
     problemSetCode: a.problem.problemSet.code,
     problemSetName: a.problem.problemSet.name,
     authorUsername: a.author.username,
+    authorFirstName: a.author.firstName,
+    authorLastName: a.author.lastName,
     timeAgo: timeAgo(a.createdAt),
   }));
 

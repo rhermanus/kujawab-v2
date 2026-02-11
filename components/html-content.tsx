@@ -9,8 +9,16 @@ interface HtmlContentProps {
   className?: string;
 }
 
+// TODO: Remove this once images are imported locally
+const PROD_ORIGIN = "https://www.kujawab.com";
+
+function proxyRelativeImages(rawHtml: string): string {
+  return rawHtml.replace(/src="(\/[^"]+)"/g, `src="${PROD_ORIGIN}$1"`);
+}
+
 export default function HtmlContent({ html, className }: HtmlContentProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const processedHtml = proxyRelativeImages(html);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -36,13 +44,13 @@ export default function HtmlContent({ html, className }: HtmlContentProps) {
 
       img.replaceWith(span);
     }
-  }, [html]);
+  }, [processedHtml]);
 
   return (
     <div
       ref={ref}
-      className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
+      className={`html-content ${className ?? ""}`}
+      dangerouslySetInnerHTML={{ __html: processedHtml }}
     />
   );
 }
