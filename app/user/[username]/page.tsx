@@ -5,6 +5,7 @@ import { getUserByUsername, getUserStats, getUserRecentAnswers } from "@/lib/que
 import { timeAgo, joinDate } from "@/lib/format";
 import ExpandableAnswer from "@/components/expandable-answer";
 import HtmlContent from "@/components/html-content";
+import ImageLightbox from "@/components/image-lightbox";
 
 // TODO: Remove once images are imported locally
 const PROD_ORIGIN = "https://www.kujawab.com";
@@ -47,7 +48,7 @@ export default async function UserProfilePage({
 
       {/* Profile header */}
       <div className="flex items-start gap-5 mb-8">
-        <img
+        <ImageLightbox
           src={profilePicUrl(user.profilePicture)}
           alt={`Foto profil ${user.username}`}
           className="w-20 h-20 rounded-full object-cover border"
@@ -93,7 +94,7 @@ export default async function UserProfilePage({
               <div key={answer.id} className="p-4">
                 <div className="font-medium">
                   <Link
-                    href={`/${answer.problem.problemSet.code}`}
+                    href={`/${answer.problem.problemSet.code}/${answer.problem.number}`}
                     className="text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     {answer.problem.problemSet.name}, nomor {answer.problem.number}
@@ -104,8 +105,10 @@ export default async function UserProfilePage({
                 ) : (
                   <HtmlContent html={answer.description} className="text-sm mt-1" />
                 )}
-                <div className="text-xs text-zinc-500 mt-1">
-                  {timeAgo(answer.createdAt)}
+                <div className="flex gap-3 text-xs text-zinc-500 mt-1">
+                  <span>{timeAgo(answer.createdAt)}</span>
+                  <span>{answer.votes.reduce((sum, v) => sum + v.value, 0)} poin</span>
+                  <span>{answer._count.comments} komentar</span>
                 </div>
               </div>
             );

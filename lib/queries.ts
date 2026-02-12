@@ -123,12 +123,12 @@ export async function getProblemByCodeAndNumber(code: string, number: number) {
     include: {
       answers: {
         include: {
-          author: { select: { username: true, firstName: true, lastName: true } },
+          author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
           votes: { select: { value: true } },
           comments: {
             orderBy: { createdAt: "asc" },
             include: {
-              author: { select: { username: true, firstName: true, lastName: true } },
+              author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
             },
           },
         },
@@ -233,6 +233,8 @@ export async function getUserRecentAnswers(userId: number, limit: number) {
           },
         },
       },
+      votes: { select: { value: true } },
+      _count: { select: { comments: true } },
     },
   });
 }

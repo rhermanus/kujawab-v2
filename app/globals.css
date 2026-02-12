@@ -127,6 +127,14 @@
 .html-content {
   font-size: 0.875rem;
   line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.html-content pre {
+  white-space: pre-wrap;
+  overflow-x: auto;
 }
 
 .html-content p {
