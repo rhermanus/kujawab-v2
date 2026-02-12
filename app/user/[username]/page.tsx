@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { getUserByUsername, getUserStats, getUserRecentAnswers } from "@/lib/queries";
-import { timeAgo } from "@/lib/format";
+import { timeAgo, joinDate } from "@/lib/format";
+import ExpandableAnswer from "@/components/expandable-answer";
+import HtmlContent from "@/components/html-content";
 
 // TODO: Remove once images are imported locally
 const PROD_ORIGIN = "https://www.kujawab.com";
@@ -10,10 +13,10 @@ function profilePicUrl(path: string | null): string {
   return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
 }
 
-function snippetFromHtml(html: string, maxLength = 150): string {
+function snippetFromHtml(html: string, maxLength = 150): { text: string; truncated: boolean } {
   const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength) + "...";
+  if (text.length <= maxLength) return { text, truncated: false };
+  return { text: text.slice(0, maxLength) + "...", truncated: true };
 }
 
 export default async function UserProfilePage({
@@ -26,6 +29,9 @@ export default async function UserProfilePage({
 
   if (!user) notFound();
 
+  const session = await auth();
+  const isOwnProfile = session?.user?.id === String(user.id);
+
   const [stats, recentAnswers] = await Promise.all([
     getUserStats(user.id),
     getUserRecentAnswers(user.id, 10),
@@ -35,7 +41,7 @@ export default async function UserProfilePage({
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6">
         <Link href="/" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-          ← Kembali ke Beranda
+          &larr; Kembali ke Beranda
         </Link>
       </div>
 
@@ -66,22 +72,12 @@ export default async function UserProfilePage({
                 {user.website.replace(/^https?:\/\//, "")}
               </a>
             )}
+            <span>{joinDate(user.createdAt)}</span>
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="border rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold">{stats.points}</div>
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">Poin</div>
-        </div>
-        <div className="border rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold">{stats.totalAnswers}</div>
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">Jawaban</div>
-        </div>
-        <div className="border rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold">{stats.totalContributions}</div>
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">Kontribusi</div>
+          <div className="flex gap-4 mt-3 text-sm">
+            <span><strong>{stats.points}</strong> Poin</span>
+            <span><strong>{stats.totalAnswers}</strong> Jawaban</span>
+          </div>
         </div>
       </div>
 
@@ -103,17 +99,11 @@ export default async function UserProfilePage({
                     {answer.problem.problemSet.name}, nomor {answer.problem.number}
                   </Link>
                 </div>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                  {snippetFromHtml(answer.description)}{" "}
-                  {problemUrl && (
-                    <Link
-                      href={problemUrl}
-                      className="text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      lihat selengkapnya
-                    </Link>
-                  )}
-                </p>
+                {snippetFromHtml(answer.description).truncated ? (
+                  <ExpandableAnswer snippet={snippetFromHtml(answer.description).text} fullHtml={answer.description} />
+                ) : (
+                  <HtmlContent html={answer.description} className="text-sm mt-1" />
+                )}
                 <div className="text-xs text-zinc-500 mt-1">
                   {timeAgo(answer.createdAt)}
                 </div>

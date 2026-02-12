@@ -164,6 +164,7 @@ export async function getUserByUsername(username: string) {
       bio: true,
       location: true,
       website: true,
+      createdAt: true,
     },
   });
 }

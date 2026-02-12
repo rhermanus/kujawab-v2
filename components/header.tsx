@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 
+const PROD_ORIGIN = "https://www.kujawab.com";
+function profilePicUrl(path: string | null): string {
+  const p = path ?? "/profpic_placeholder.jpg";
+  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
+}
+
 export default async function Header() {
   const session = await auth();
 
@@ -27,7 +33,17 @@ export default async function Header() {
           </Link>
           {session?.user ? (
             <>
-              <span className="text-white/90">{session.user.name}</span>
+              <Link
+                href={`/user/${session.user.username}`}
+                className="flex items-center gap-2 text-white/90 hover:text-white"
+              >
+                <img
+                  src={profilePicUrl(session.user.profilePicture)}
+                  alt=""
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+                {session.user.firstName}
+              </Link>
               <form
                 action={async () => {
                   "use server";

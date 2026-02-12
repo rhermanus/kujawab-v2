@@ -20,6 +20,15 @@ export function timeAgo(date: Date): string {
   return `${years} tahun lalu`;
 }
 
+const MONTH_NAMES = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+export function joinDate(date: Date): string {
+  return `Bergabung ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   KOMPUTER: "Komputer",
   MATEMATIKA: "Matematika",

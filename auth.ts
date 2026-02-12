@@ -33,6 +33,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
           username: user.username,
+          firstName: user.firstName,
+          profilePicture: user.profilePicture,
         };
       },
     }),
@@ -45,13 +47,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.username = (user as { username?: string }).username;
+        token.username = (user as Record<string, unknown>).username as string;
+        token.firstName = (user as Record<string, unknown>).firstName as string;
+        token.profilePicture = (user as Record<string, unknown>).profilePicture as string | null;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.id as string;
       session.user.username = token.username as string;
+      session.user.firstName = token.firstName as string;
+      session.user.profilePicture = token.profilePicture as string | null;
       return session;
     },
   },
