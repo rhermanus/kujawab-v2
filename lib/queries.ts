@@ -118,27 +118,7 @@ export async function getProblemByCodeAndNumber(code: string, number: number) {
   });
   if (!problemSet) return null;
 
-  const problem = await prisma.problem.findFirst({
-    where: { problemSetId: problemSet.id, number },
-    include: {
-      answers: {
-        include: {
-          author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
-          votes: { select: { value: true } },
-          comments: {
-            orderBy: { createdAt: "asc" },
-            include: {
-              author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
-  if (!problem) return null;
-
-  // Find applicable extra description
+  // Find applicable extra description (cluster)
   const extraDescription = await prisma.extraDescription.findFirst({
     where: {
       problemSetId: problemSet.id,
@@ -147,7 +127,68 @@ export async function getProblemByCodeAndNumber(code: string, number: number) {
     },
   });
 
-  return { problemSet, problem, extraDescription };
+  const answerInclude = {
+    include: {
+      author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
+      votes: { select: { value: true } },
+      comments: {
+        orderBy: { createdAt: "asc" as const },
+        include: {
+          author: { select: { username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" as const },
+  };
+
+  if (extraDescription) {
+    // Clustered: fetch all problems in range, answers from first problem only
+    const [problems, firstProblem] = await Promise.all([
+      prisma.problem.findMany({
+        where: {
+          problemSetId: problemSet.id,
+          number: { gte: extraDescription.startNumber, lte: extraDescription.endNumber },
+        },
+        orderBy: { number: "asc" },
+        select: { id: true, number: true, description: true },
+      }),
+      prisma.problem.findFirst({
+        where: { problemSetId: problemSet.id, number: extraDescription.startNumber },
+        include: { answers: answerInclude },
+      }),
+    ]);
+
+    if (problems.length === 0) return null;
+
+    const answers = firstProblem?.answers ?? [];
+    answers.sort((a, b) => {
+      const pointsA = a.votes.reduce((sum, v) => sum + v.value, 0);
+      const pointsB = b.votes.reduce((sum, v) => sum + v.value, 0);
+      return pointsB - pointsA;
+    });
+
+    return { problemSet, problems, extraDescription, answers };
+  }
+
+  // Non-clustered: single problem with its own answers
+  const problem = await prisma.problem.findFirst({
+    where: { problemSetId: problemSet.id, number },
+    include: { answers: answerInclude },
+  });
+  if (!problem) return null;
+
+  problem.answers.sort((a, b) => {
+    const pointsA = a.votes.reduce((sum, v) => sum + v.value, 0);
+    const pointsB = b.votes.reduce((sum, v) => sum + v.value, 0);
+    return pointsB - pointsA;
+  });
+
+  return {
+    problemSet,
+    problems: [{ id: problem.id, number: problem.number, description: problem.description }],
+    extraDescription: null,
+    answers: problem.answers,
+  };
 }
 
 // ─── User profile page ───────────────────────────────────────────────

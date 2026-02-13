@@ -21,7 +21,12 @@ export default async function ProblemPage({
 
   if (!result) notFound();
 
-  const { problemSet, problem, extraDescription } = result;
+  const { problemSet, problems, extraDescription, answers } = result;
+
+  const isClustered = problems.length > 1;
+  const numberLabel = isClustered
+    ? `${problems[0].number}–${problems[problems.length - 1].number}`
+    : String(number);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -31,12 +36,9 @@ export default async function ProblemPage({
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold mb-1">
-        {problemSet.name}, Nomor {number}
+      <h1 className="text-2xl font-bold mb-6">
+        {problemSet.name}, Nomor {numberLabel}
       </h1>
-      <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-        {problem.answers.length} jawaban
-      </p>
 
       {/* Extra description */}
       {extraDescription && (
@@ -48,18 +50,25 @@ export default async function ProblemPage({
         </div>
       )}
 
-      {/* Problem */}
-      <div className="border rounded-lg p-6 mb-8">
-        <HtmlContent
-          className=""
-          html={problem.description}
-        />
-      </div>
+      {/* Problems */}
+      {problems.map((problem) => (
+        <div key={problem.id} className="border rounded-lg p-6 mb-4">
+          {isClustered && (
+            <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2">
+              Nomor {problem.number}
+            </p>
+          )}
+          <HtmlContent
+            className=""
+            html={problem.description}
+          />
+        </div>
+      ))}
 
       {/* Answers */}
-      <h2 className="text-lg font-semibold mb-4">Jawaban</h2>
+      <h2 className="text-lg font-semibold mb-4 mt-8">{answers.length} jawaban</h2>
       <div className="space-y-6">
-        {problem.answers.map((answer) => {
+        {answers.map((answer) => {
           const points = answer.votes.reduce((sum, v) => sum + v.value, 0);
 
           return (
