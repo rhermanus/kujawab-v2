@@ -53,15 +53,14 @@ export default async function ProblemPage({
       {/* Problems */}
       {problems.map((problem) => (
         <div key={problem.id} className="border rounded-lg p-6 mb-4">
-          {isClustered && (
-            <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2">
-              Nomor {problem.number}
-            </p>
+          {isClustered ? (
+            <div className="flex gap-2">
+              <span className="font-semibold shrink-0">{problem.number}.</span>
+              <HtmlContent className="" html={problem.description} />
+            </div>
+          ) : (
+            <HtmlContent className="" html={problem.description} />
           )}
-          <HtmlContent
-            className=""
-            html={problem.description}
-          />
         </div>
       ))}
 
