@@ -1,0 +1,113 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import HtmlContent from "@/components/html-content";
+import RichEditor from "@/components/rich-editor";
+import { createCommentAction } from "@/lib/comment-actions";
+import { profilePicUrl, timeAgo } from "@/lib/format";
+import { MessageSquare } from "lucide-react";
+
+interface Comment {
+  id: number;
+  content: string;
+  createdAt: string | Date;
+  author: {
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+    profilePicture: string | null;
+    bio: string | null;
+  };
+}
+
+interface CommentSectionProps {
+  answerId: number;
+  comments: Comment[];
+  isLoggedIn: boolean;
+}
+
+export default function CommentSection({ answerId, comments, isLoggedIn }: CommentSectionProps) {
+  const [showEditor, setShowEditor] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (html: string) => {
+    const result = await createCommentAction(answerId, html);
+
+    if (result.success) {
+      setShowEditor(false);
+      router.refresh();
+      if (result.commentId) {
+        setTimeout(() => {
+          document
+            .getElementById(`comment-${result.commentId}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+      }
+    }
+
+    return result;
+  };
+
+  return (
+    <div className="border-t bg-zinc-50 dark:bg-zinc-900/40 px-6 py-4">
+      {/* Existing comments */}
+      {comments.length > 0 && (
+        <div className="divide-y divide-zinc-200 dark:divide-zinc-700/50">
+          {comments.map((comment) => (
+            <div key={comment.id} id={`comment-${comment.id}`} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+              <Link href={`/user/${comment.author.username}`} className="shrink-0">
+                <img
+                  src={profilePicUrl(comment.author.profilePicture)}
+                  alt={`Foto profil ${comment.author.username}`}
+                  className="w-8 h-8 rounded-full object-cover border"
+                />
+              </Link>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-sm">
+                  <Link
+                    href={`/user/${comment.author.username}`}
+                    className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {comment.author.firstName} {comment.author.lastName}
+                  </Link>
+                  <span className="text-xs text-zinc-500">{timeAgo(comment.createdAt)}</span>
+                </div>
+                {comment.author.bio && (
+                  <p className="text-xs text-zinc-500">{comment.author.bio}</p>
+                )}
+                <HtmlContent html={comment.content} className="text-sm mt-1" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Write comment */}
+      {isLoggedIn && (
+        <div className={comments.length > 0 ? "mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700/50" : ""}>
+          {showEditor ? (
+            <RichEditor
+              onSubmit={handleSubmit}
+              submitLabel="Kirim Komentar"
+              placeholder="Tulis komentar di sini…"
+              minHeight="8rem"
+              minContentLength={5}
+              onCancel={() => setShowEditor(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowEditor(true)}
+              className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              <MessageSquare size={14} />
+              Tulis komentar...
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

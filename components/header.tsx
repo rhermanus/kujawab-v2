@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
-
-const PROD_ORIGIN = "https://www.kujawab.com";
-function profilePicUrl(path: string | null): string {
-  const p = path ?? "/profpic_placeholder.jpg";
-  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
-}
+import { profilePicUrl } from "@/lib/format";
 
 export default async function Header() {
   const session = await auth();

@@ -225,11 +225,10 @@
 /* ── TipTap editor ── */
 .tiptap {
   outline: none;
-  min-height: 20rem;
   padding: 1rem;
 }
 .tiptap p.is-editor-empty:first-child::before {
-  content: "Tulis jawaban di sini…";
+  content: attr(data-placeholder);
   color: #9ca3af;
   float: left;
   height: 0;

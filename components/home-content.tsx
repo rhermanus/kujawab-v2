@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { profilePicUrl } from "@/lib/format";
 
 interface ProblemSetEntry {
   code: string;
@@ -16,13 +17,6 @@ interface Contributor {
   lastName: string;
   profilePicture: string | null;
   points: number;
-}
-
-// TODO: Remove once images are imported locally
-const PROD_ORIGIN = "https://www.kujawab.com";
-function profilePicUrl(path: string | null): string {
-  const p = path ?? "/profpic_placeholder.jpg";
-  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
 }
 
 interface RecentAnswer {
@@ -140,7 +134,7 @@ export default function HomeContent({
             {recentAnswers.map((r) => (
               <li key={r.id}>
                 <div className="font-medium">
-                  <Link href={`/${r.problemSetCode}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <Link href={`/${r.problemSetCode}/${r.problemNumber}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                     {r.problemSetName}, nomor {r.problemNumber}
                   </Link>
                 </div>

@@ -2,17 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserByUsername, getUserStats, getUserRecentAnswers } from "@/lib/queries";
-import { timeAgo, joinDate } from "@/lib/format";
+import { timeAgo, joinDate, profilePicUrl } from "@/lib/format";
 import ExpandableAnswer from "@/components/expandable-answer";
 import HtmlContent from "@/components/html-content";
 import ImageLightbox from "@/components/image-lightbox";
-
-// TODO: Remove once images are imported locally
-const PROD_ORIGIN = "https://www.kujawab.com";
-function profilePicUrl(path: string | null): string {
-  const p = path ?? "/profpic_placeholder.jpg";
-  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
-}
 
 function snippetFromHtml(html: string, maxLength = 150): { text: string; truncated: boolean } {
   const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();

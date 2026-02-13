@@ -1,17 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProblemByCodeAndNumber } from "@/lib/queries";
-import { timeAgo } from "@/lib/format";
+import { timeAgo, profilePicUrl } from "@/lib/format";
 import HtmlContent from "@/components/html-content";
 import AnswerEditor from "@/components/answer-editor";
+import CommentSection from "@/components/comment-section";
 import { auth } from "@/auth";
-
-// TODO: Remove once images are imported locally
-const PROD_ORIGIN = "https://www.kujawab.com";
-function profilePicUrl(path: string | null): string {
-  const p = path ?? "/profpic_placeholder.jpg";
-  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
-}
 
 export default async function ProblemPage({
   params,
@@ -32,6 +26,8 @@ export default async function ProblemPage({
   const numberLabel = isClustered
     ? `${problems[0].number}–${problems[problems.length - 1].number}`
     : String(number);
+
+  const isLoggedIn = !!session?.user;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -120,35 +116,15 @@ export default async function ProblemPage({
               </div>
 
               {/* Comments */}
-              {answer.comments.length > 0 && (
-                <div className="border-t bg-zinc-50 dark:bg-zinc-900/40 px-6 py-4 divide-y divide-zinc-200 dark:divide-zinc-700/50">
-                  {answer.comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                      <Link href={`/user/${comment.author.username}`} className="shrink-0">
-                        <img
-                          src={profilePicUrl(comment.author.profilePicture)}
-                          alt={`Foto profil ${comment.author.username}`}
-                          className="w-8 h-8 rounded-full object-cover border"
-                        />
-                      </Link>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Link
-                            href={`/user/${comment.author.username}`}
-                            className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            {comment.author.firstName} {comment.author.lastName}
-                          </Link>
-                          <span className="text-xs text-zinc-500">{timeAgo(comment.createdAt)}</span>
-                        </div>
-                        {comment.author.bio && (
-                          <p className="text-xs text-zinc-500">{comment.author.bio}</p>
-                        )}
-                        <HtmlContent html={comment.content} className="text-sm mt-1" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {(answer.comments.length > 0 || isLoggedIn) && (
+                <CommentSection
+                  answerId={answer.id}
+                  comments={answer.comments.map((c) => ({
+                    ...c,
+                    createdAt: c.createdAt.toISOString(),
+                  }))}
+                  isLoggedIn={isLoggedIn}
+                />
               )}
             </div>
           );

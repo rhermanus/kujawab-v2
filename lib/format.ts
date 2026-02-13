@@ -1,6 +1,14 @@
-export function timeAgo(date: Date): string {
+// TODO: Remove once images are imported locally
+const PROD_ORIGIN = "https://www.kujawab.com";
+export function profilePicUrl(path: string | null): string {
+  const p = path ?? "/profpic_placeholder.jpg";
+  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
+}
+
+export function timeAgo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
   const now = Date.now();
-  const seconds = Math.floor((now - date.getTime()) / 1000);
+  const seconds = Math.floor((now - d.getTime()) / 1000);
 
   if (seconds < 60) return "baru saja";
 
