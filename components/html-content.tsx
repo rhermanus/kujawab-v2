@@ -3,22 +3,30 @@
 import { useRef, useEffect } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import imageMap from "@/scripts/image-map.json";
 
 interface HtmlContentProps {
   html: string;
   className?: string;
 }
 
-// TODO: Remove this once images are imported locally
-const PROD_ORIGIN = "https://www.kujawab.com";
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL!;
 
-function proxyRelativeImages(rawHtml: string): string {
-  return rawHtml.replace(/src="(\/[^"]+)"/g, `src="${PROD_ORIGIN}$1"`);
+function rewriteImageUrls(rawHtml: string): string {
+  return rawHtml.replace(/src="([^"]+)"/g, (match, src: string) => {
+    // Relative paths → R2 (same path structure)
+    if (src.startsWith("/")) return `src="${R2_PUBLIC_URL}${src}"`;
+    // External URLs → check mapping
+    const mapped = (imageMap as Record<string, string>)[src];
+    if (mapped) return `src="${R2_PUBLIC_URL}/${mapped}"`;
+    // No mapping (new R2 uploads, or unmigrated) → keep as-is
+    return match;
+  });
 }
 
 export default function HtmlContent({ html, className }: HtmlContentProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const processedHtml = proxyRelativeImages(html);
+  const processedHtml = rewriteImageUrls(html);
 
   useEffect(() => {
     if (!ref.current) return;

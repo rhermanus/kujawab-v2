@@ -1,8 +1,10 @@
-// TODO: Remove once images are imported locally
-const PROD_ORIGIN = "https://www.kujawab.com";
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL!;
+
 export function profilePicUrl(path: string | null): string {
-  const p = path ?? "/profpic_placeholder.jpg";
-  return p.startsWith("/") ? `${PROD_ORIGIN}${p}` : p;
+  if (!path || path === "/profpic_placeholder.jpg") return "/profpic_placeholder.jpg";
+  if (path.startsWith("http")) return path; // already full URL (new uploads)
+  // Legacy relative path → serve from R2 (same path structure)
+  return `${R2_PUBLIC_URL}${path}`;
 }
 
 export function timeAgo(date: Date | string): string {
