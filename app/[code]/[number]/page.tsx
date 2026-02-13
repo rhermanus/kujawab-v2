@@ -76,7 +76,7 @@ export default async function ProblemPage({
           const points = answer.votes.reduce((sum, v) => sum + v.value, 0);
 
           return (
-            <div key={answer.id} className="border rounded-lg">
+            <div key={answer.id} id={`answer-${answer.id}`} className="border rounded-lg">
               <div className="p-6">
                 {/* Answer header */}
                 <div className="flex items-start justify-between mb-3">

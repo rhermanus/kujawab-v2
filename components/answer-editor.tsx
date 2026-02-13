@@ -408,6 +408,7 @@ function Btn({ onClick, active, title, children }: {
 
 export default function AnswerEditor({ problemId }: { problemId: number }) {
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mathModalOpen, setMathModalOpen] = useState(false);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
@@ -457,6 +458,13 @@ export default function AnswerEditor({ problemId }: { problemId: number }) {
     if (result.success) {
       editor.commands.clearContent();
       router.refresh();
+      if (result.answerId) {
+        setTimeout(() => {
+          document
+            .getElementById(`answer-${result.answerId}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+      }
     } else {
       setError(result.error ?? "Gagal mengirim jawaban.");
     }
@@ -477,15 +485,20 @@ export default function AnswerEditor({ problemId }: { problemId: number }) {
     const formData = new FormData();
     formData.append("file", file);
 
+    setUploading(true);
+    setError(null);
+
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
+      setUploading(false);
       if (data.url) {
         editor.chain().focus().setImage({ src: data.url }).run();
       } else {
         setError(data.error ?? "Gagal mengunggah gambar.");
       }
     } catch {
+      setUploading(false);
       setError("Gagal mengunggah gambar.");
     }
     e.target.value = "";
@@ -568,13 +581,21 @@ export default function AnswerEditor({ problemId }: { problemId: number }) {
           <Btn onClick={insertLink} active={editor.isActive("link")} title="Insert Link">
             <LinkIcon size={iconSize} />
           </Btn>
-          <Btn onClick={() => fileInputRef.current?.click()} title="Upload Image">
-            <ImageIcon size={iconSize} />
+          <Btn onClick={() => !uploading && fileInputRef.current?.click()} title="Upload Image">
+            {uploading ? <Loader2 size={iconSize} className="animate-spin" /> : <ImageIcon size={iconSize} />}
           </Btn>
           <Btn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert Table">
             <TableIcon size={iconSize} />
           </Btn>
         </div>
+
+        {/* Upload indicator */}
+        {uploading && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border-b text-xs text-blue-600 dark:text-blue-400">
+            <Loader2 size={14} className="animate-spin" />
+            Mengunggah gambar...
+          </div>
+        )}
 
         {/* Editor */}
         <EditorContent editor={editor} />

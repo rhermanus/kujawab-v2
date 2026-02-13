@@ -28,7 +28,7 @@ export async function createAnswerAction(problemId: number, description: string)
     return { success: false, error: "Soal tidak ditemukan." };
   }
 
-  await prisma.answer.create({
+  const answer = await prisma.answer.create({
     data: {
       problemId,
       authorId: Number(session.user.id),
@@ -37,5 +37,5 @@ export async function createAnswerAction(problemId: number, description: string)
   });
 
   revalidatePath(`/${problem.problemSet.code}/${problem.number}`);
-  return { success: true };
+  return { success: true, answerId: answer.id };
 }
