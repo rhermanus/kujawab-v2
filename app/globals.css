@@ -203,3 +203,50 @@
     border-color: #444;
   }
 }
+
+/* ── TipTap editor ── */
+.tiptap {
+  outline: none;
+  min-height: 20rem;
+  padding: 1rem;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: "Tulis jawaban di sini…";
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* TipTap tables (always bordered) */
+.tiptap table {
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  border: 1px solid #d1d5db;
+}
+.tiptap th,
+.tiptap td {
+  border: 1px solid #d1d5db;
+  padding: 0.35rem 0.6rem;
+}
+.tiptap th {
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+.tiptap .selectedCell {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tiptap table,
+  .tiptap th,
+  .tiptap td {
+    border-color: #444;
+  }
+  .tiptap th {
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+  .tiptap .selectedCell {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+}

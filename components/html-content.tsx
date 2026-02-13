@@ -44,6 +44,24 @@ export default function HtmlContent({ html, className }: HtmlContentProps) {
 
       img.replaceWith(span);
     }
+
+    // Render math-tex spans (from TipTap editor output)
+    const mathSpans = ref.current.querySelectorAll<HTMLSpanElement>(
+      "span.math-tex[data-latex]"
+    );
+    for (const span of mathSpans) {
+      if (span.querySelector(".katex")) continue; // already rendered
+      const latex = span.getAttribute("data-latex");
+      if (!latex) continue;
+      try {
+        katex.render(latex, span, {
+          throwOnError: false,
+          displayMode: false,
+        });
+      } catch {
+        span.textContent = latex;
+      }
+    }
   }, [processedHtml]);
 
   return (

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getProblemByCodeAndNumber } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 import HtmlContent from "@/components/html-content";
+import AnswerEditor from "@/components/answer-editor";
+import { auth } from "@/auth";
 
 // TODO: Remove once images are imported locally
 const PROD_ORIGIN = "https://www.kujawab.com";
@@ -17,7 +19,10 @@ export default async function ProblemPage({
   params: Promise<{ code: string; number: string }>;
 }) {
   const { code, number } = await params;
-  const result = await getProblemByCodeAndNumber(code, parseInt(number));
+  const [result, session] = await Promise.all([
+    getProblemByCodeAndNumber(code, parseInt(number)),
+    auth(),
+  ]);
 
   if (!result) notFound();
 
@@ -150,15 +155,19 @@ export default async function ProblemPage({
         })}
       </div>
 
-      {/* Write answer prompt */}
-      <div className="mt-8 border rounded-lg p-6 text-center text-zinc-600 dark:text-zinc-400">
-        <p>
-          <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
-            Masuk
-          </Link>{" "}
-          untuk menulis jawaban
-        </p>
-      </div>
+      {/* Write answer */}
+      {session?.user ? (
+        <AnswerEditor problemId={problems[0].id} />
+      ) : (
+        <div className="mt-8 border rounded-lg p-6 text-center text-zinc-600 dark:text-zinc-400">
+          <p>
+            <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+              Masuk
+            </Link>{" "}
+            untuk menulis jawaban
+          </p>
+        </div>
+      )}
     </main>
   );
 }
