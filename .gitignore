@@ -44,3 +44,6 @@ next-env.d.ts
 
 # SQL dump (production data)
 kujawab.sql
+
+# Migration scripts (one-time use)
+/scripts

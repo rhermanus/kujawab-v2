@@ -53,9 +53,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       } else if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: Number(token.id) },
-          select: { profilePicture: true },
+          select: { username: true, firstName: true, lastName: true, profilePicture: true },
         });
-        if (dbUser) token.profilePicture = dbUser.profilePicture;
+        if (dbUser) {
+          token.username = dbUser.username;
+          token.firstName = dbUser.firstName;
+          token.name = `${dbUser.firstName} ${dbUser.lastName ?? ""}`.trim();
+          token.profilePicture = dbUser.profilePicture;
+        }
       }
       return token;
     },

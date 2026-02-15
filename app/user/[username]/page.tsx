@@ -47,9 +47,19 @@ export default async function UserProfilePage({
           className="w-20 h-20 rounded-full object-cover border"
         />
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold">
-            {user.firstName} {user.lastName}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">
+              {user.firstName} {user.lastName}
+            </h1>
+            {isOwnProfile && (
+              <Link
+                href={`/user/${user.username}/edit`}
+                className="rounded-md border px-3 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Edit profil
+              </Link>
+            )}
+          </div>
           <p className="text-zinc-600 dark:text-zinc-400">@{user.username}</p>
           {user.bio && (
             <p className="mt-2 text-sm">{user.bio}</p>
