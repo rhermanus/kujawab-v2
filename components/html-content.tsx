@@ -15,7 +15,11 @@ const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL!;
 function rewriteImageUrls(rawHtml: string): string {
   return rawHtml.replace(/src="([^"]+)"/g, (match, src: string) => {
     // Relative paths → R2 (same path structure)
-    if (src.startsWith("/")) return `src="${R2_PUBLIC_URL}${src}"`;
+    if (src.startsWith("/")) {
+      // Normalize: collapse double slashes, decode HTML entities
+      const normalized = src.replace(/\/\//g, "/").replace(/&amp;/g, "&");
+      return `src="${R2_PUBLIC_URL}${normalized}"`;
+    }
     // External URLs → check mapping
     const mapped = (imageMap as Record<string, string>)[src];
     if (mapped) return `src="${R2_PUBLIC_URL}/${mapped}"`;
