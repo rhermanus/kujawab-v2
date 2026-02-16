@@ -252,7 +252,13 @@ export async function searchProblems(query: string, limit = 50) {
   });
 }
 
-// ─── User profile page ───────────────────────────────────────────────
+export async function getFollowerCount(userId: number) {
+  return prisma.follow.count({ where: { followingId: userId } });
+}
+
+export async function getFollowingCount(userId: number) {
+  return prisma.follow.count({ where: { followerId: userId } });
+}
 
 // ─── Problem Factory ──────────────────────────────────────────────────
 

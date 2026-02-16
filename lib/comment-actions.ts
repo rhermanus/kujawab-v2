@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 
 export async function createCommentAction(answerId: number, content: string) {
@@ -19,10 +20,11 @@ export async function createCommentAction(answerId: number, content: string) {
     where: { id: answerId },
     select: {
       id: true,
+      authorId: true,
       problem: {
         select: {
           number: true,
-          problemSet: { select: { code: true } },
+          problemSet: { select: { code: true, name: true } },
         },
       },
     },
@@ -32,13 +34,22 @@ export async function createCommentAction(answerId: number, content: string) {
     return { success: false, error: "Jawaban tidak ditemukan." };
   }
 
+  const commenterId = Number(session.user.id);
   const comment = await prisma.comment.create({
     data: {
       answerId,
-      authorId: Number(session.user.id),
+      authorId: commenterId,
       content: trimmed,
     },
   });
+
+  if (answer.problem.number) {
+    await createNotification("NEW_COMMENT", commenterId, answer.authorId, {
+      problemSetCode: answer.problem.problemSet.code!,
+      problemSetName: answer.problem.problemSet.name,
+      problemNumber: answer.problem.number,
+    });
+  }
 
   revalidatePath(`/${answer.problem.problemSet.code}/${answer.problem.number}`);
   return { success: true, commentId: comment.id };

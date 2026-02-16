@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { profilePicUrl } from "@/lib/format";
+import { getUnreadCount } from "@/lib/notifications";
+import NotificationBell from "@/components/notification-bell";
 import { House } from 'lucide-react';
 
 export default async function Header() {
   const session = await auth();
+  const unreadCount = session?.user?.id
+    ? await getUnreadCount(Number(session.user.id))
+    : 0;
 
   return (
     <header className="sticky top-0 z-50 bg-[#0098A6] shadow-md">
@@ -30,6 +35,7 @@ export default async function Header() {
           </Link>
           {session?.user ? (
             <>
+              <NotificationBell unreadCount={unreadCount} />
               <Link
                 href={`/user/${session.user.username}`}
                 className="flex items-center gap-2 text-white/90 hover:text-white"

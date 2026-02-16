@@ -30,6 +30,7 @@ enum NotificationType {
   NEW_COMMENT       // someone commented on your answer
   ANSWER_UPVOTED    // your answer was upvoted
   ANSWER_DOWNVOTED  // your answer was downvoted
+  NEW_FOLLOWER      // someone started following you
 }
 
 model User {
@@ -58,6 +59,8 @@ model User {
   admin                 Admin?
   sentNotifications     Notification[] @relation("NotificationSender")
   receivedNotifications Notification[] @relation("NotificationReceiver")
+  followers             Follow[]       @relation("UserFollowers")
+  following             Follow[]       @relation("UserFollowing")
 
   @@map("users")
 }
@@ -185,6 +188,19 @@ model Notification {
   sender   User @relation("NotificationSender", fields: [senderId], references: [id])
 
   @@map("notifications")
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  User @relation("UserFollowers", fields: [followerId], references: [id])
+  following User @relation("UserFollowing", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@map("follows")
 }
 
 model PasswordReminder {

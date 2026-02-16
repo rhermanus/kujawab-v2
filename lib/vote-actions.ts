@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 
 async function getAnswerPath(answerId: number) {
@@ -26,6 +27,28 @@ export async function voteAction(answerId: number, value: 1 | -1) {
     update: { value },
     create: { answerId, voterId, value },
   });
+
+  if (value === 1) {
+    const answer = await prisma.answer.findUnique({
+      where: { id: answerId },
+      select: {
+        authorId: true,
+        problem: {
+          select: {
+            number: true,
+            problemSet: { select: { code: true, name: true } },
+          },
+        },
+      },
+    });
+    if (answer && answer.problem.problemSet.code && answer.problem.number) {
+      await createNotification("ANSWER_UPVOTED", voterId, answer.authorId, {
+        problemSetCode: answer.problem.problemSet.code,
+        problemSetName: answer.problem.problemSet.name,
+        problemNumber: answer.problem.number,
+      });
+    }
+  }
 
   const path = await getAnswerPath(answerId);
   if (path) revalidatePath(path);

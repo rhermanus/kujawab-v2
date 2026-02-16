@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getUserByUsername, getUserStats, getUserRecentAnswers } from "@/lib/queries";
+import { getUserByUsername, getUserStats, getUserRecentAnswers, getFollowerCount, getFollowingCount } from "@/lib/queries";
+import { getFollowStatus } from "@/lib/follow-actions";
 import { timeAgo, joinDate, profilePicUrl } from "@/lib/format";
 import ExpandableAnswer from "@/components/expandable-answer";
+import FollowButton from "@/components/follow-button";
 import HtmlContent from "@/components/html-content";
 import ImageLightbox from "@/components/image-lightbox";
 
@@ -26,9 +28,14 @@ export default async function UserProfilePage({
   const session = await auth();
   const isOwnProfile = session?.user?.id === String(user.id);
 
-  const [stats, recentAnswers] = await Promise.all([
+  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
+
+  const [stats, recentAnswers, followerCount, followingCount, isFollowing] = await Promise.all([
     getUserStats(user.id),
     getUserRecentAnswers(user.id, 10),
+    getFollowerCount(user.id),
+    getFollowingCount(user.id),
+    currentUserId && !isOwnProfile ? getFollowStatus(currentUserId, user.id) : Promise.resolve(false),
   ]);
 
   return (
@@ -51,7 +58,7 @@ export default async function UserProfilePage({
             <h1 className="text-2xl font-bold">
               {user.firstName} {user.lastName}
             </h1>
-            {isOwnProfile && (
+            {isOwnProfile ? (
               <div className="flex gap-2">
                 <Link
                   href={`/user/${user.username}/edit`}
@@ -66,7 +73,9 @@ export default async function UserProfilePage({
                   Ubah kata sandi
                 </Link>
               </div>
-            )}
+            ) : currentUserId ? (
+              <FollowButton targetUserId={user.id} initialFollowing={isFollowing} />
+            ) : null}
           </div>
           <p className="text-zinc-600 dark:text-zinc-400">@{user.username}</p>
           {user.bio && (
@@ -89,6 +98,8 @@ export default async function UserProfilePage({
           <div className="flex gap-4 mt-3 text-sm">
             <span><strong>{stats.points}</strong> Poin</span>
             <span><strong>{stats.totalAnswers}</strong> Jawaban</span>
+            <span><strong>{followerCount}</strong> Pengikut</span>
+            <span><strong>{followingCount}</strong> Mengikuti</span>
           </div>
         </div>
       </div>
