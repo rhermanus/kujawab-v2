@@ -1,10 +1,10 @@
-const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL!;
-
 export function profilePicUrl(path: string | null): string {
   if (!path || path === "/profpic_placeholder.jpg") return "/profpic_placeholder.jpg";
-  if (path.startsWith("http")) return path; // already full URL (new uploads)
-  // Legacy relative path → serve from R2 (same path structure)
-  return `${R2_PUBLIC_URL}${path}`;
+  // Full R2 URL stored in DB → rewrite to proxy path
+  if (path.includes(".r2.dev/")) return `/r2/${path.split(".r2.dev/")[1]}`;
+  if (path.startsWith("http")) return path;
+  // Legacy relative path → serve via /r2/ rewrite proxy
+  return `/r2${path}`;
 }
 
 export function timeAgo(date: Date | string): string {

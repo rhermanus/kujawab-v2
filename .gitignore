@@ -47,3 +47,4 @@ kujawab.sql
 
 # Migration scripts (one-time use)
 /scripts
+.env*.local

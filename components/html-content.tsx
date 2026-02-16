@@ -10,20 +10,20 @@ interface HtmlContentProps {
   className?: string;
 }
 
-const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL!;
-
 function rewriteImageUrls(rawHtml: string): string {
   return rawHtml.replace(/src="([^"]+)"/g, (match, src: string) => {
-    // Relative paths → R2 (same path structure)
+    // Full R2 URL stored in DB → rewrite to proxy path
+    if (src.includes(".r2.dev/")) return `src="/r2/${src.split(".r2.dev/")[1]}"`;
+    // Relative paths → serve via /r2/ rewrite proxy
     if (src.startsWith("/")) {
       // Normalize: collapse double slashes, decode HTML entities
       const normalized = src.replace(/\/\//g, "/").replace(/&amp;/g, "&");
-      return `src="${R2_PUBLIC_URL}${normalized}"`;
+      return `src="/r2${normalized}"`;
     }
     // External URLs → check mapping
     const mapped = (imageMap as Record<string, string>)[src];
-    if (mapped) return `src="${R2_PUBLIC_URL}/${mapped}"`;
-    // No mapping (new R2 uploads, or unmigrated) → keep as-is
+    if (mapped) return `src="/r2/${mapped}"`;
+    // No mapping → keep as-is
     return match;
   });
 }
