@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import imageMap from "@/scripts/image-map.json";
+import imageMap from "@/lib/image-map.json";
 
 interface HtmlContentProps {
   html: string;
