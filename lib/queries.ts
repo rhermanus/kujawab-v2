@@ -130,7 +130,7 @@ export async function getProblemByCodeAndNumber(code: string, number: number) {
   const answerInclude = {
     include: {
       author: { select: { id: true, username: true, firstName: true, lastName: true, profilePicture: true, bio: true } },
-      votes: { select: { value: true } },
+      votes: { select: { voterId: true, value: true } },
       comments: {
         orderBy: { createdAt: "asc" as const },
         include: {

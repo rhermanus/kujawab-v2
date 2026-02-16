@@ -5,6 +5,7 @@ import { timeAgo, profilePicUrl } from "@/lib/format";
 import HtmlContent from "@/components/html-content";
 import AnswerEditor from "@/components/answer-editor";
 import AnswerActions from "@/components/answer-actions";
+import VoteButtons from "@/components/vote-buttons";
 import CommentSection from "@/components/comment-section";
 import { auth } from "@/auth";
 
@@ -72,6 +73,9 @@ export default async function ProblemPage({
       <div className="space-y-6">
         {answers.map((answer) => {
           const points = answer.votes.reduce((sum, v) => sum + v.value, 0);
+          const userVote = currentUserId
+            ? answer.votes.find((v) => v.voterId === currentUserId)?.value ?? 0
+            : 0;
 
           return (
             <div key={answer.id} id={`answer-${answer.id}`} className="border rounded-lg">
@@ -103,11 +107,12 @@ export default async function ProblemPage({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <button className="text-zinc-400 hover:text-green-600">▲</button>
-                    <span className="font-medium">{points}</span>
-                    <button className="text-zinc-400 hover:text-red-600">▼</button>
-                  </div>
+                  <VoteButtons
+                    answerId={answer.id}
+                    points={points}
+                    userVote={userVote}
+                    isLoggedIn={isLoggedIn}
+                  />
                 </div>
 
                 {/* Answer content */}
