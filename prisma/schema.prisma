@@ -19,6 +19,12 @@ enum Category {
   GEOGRAFI    // 9
 }
 
+enum ProblemSetStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  PUBLISHED
+}
+
 enum NotificationType {
   NEW_ANSWER        // someone answered a problem you follow
   NEW_COMMENT       // someone commented on your answer
@@ -70,7 +76,7 @@ model ProblemSet {
   code         String?   @unique @db.VarChar(15)
   name         String    @db.VarChar(100)
   problemCount Int       @map("problem_count")
-  published    Boolean   @default(false)
+  status       ProblemSetStatus @default(DRAFT)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 

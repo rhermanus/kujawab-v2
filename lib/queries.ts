@@ -21,7 +21,7 @@ export async function getPublishedProblemSetsByCategory() {
       JOIN answers a ON a.problem_id = p.id
       GROUP BY p.problemset_id
     ) ac ON ac.problemset_id = ps.id
-    WHERE ps.published = true AND ps.code IS NOT NULL
+    WHERE ps.status = 'PUBLISHED' AND ps.code IS NOT NULL
     ORDER BY ps.category, ps.name
   `;
 
@@ -65,7 +65,7 @@ export async function getTopContributors(limit: number) {
 export async function getRecentAnswers(limit: number) {
   return prisma.answer.findMany({
     where: {
-      problem: { problemSet: { published: true, code: { not: null } } },
+      problem: { problemSet: { status: "PUBLISHED", code: { not: null } } },
     },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -90,8 +90,8 @@ export async function getRecentAnswers(limit: number) {
 // ─── Problem set page ─────────────────────────────────────────────────
 
 export async function getProblemSetByCode(code: string) {
-  return prisma.problemSet.findUnique({
-    where: { code },
+  return prisma.problemSet.findFirst({
+    where: { code, status: "PUBLISHED" },
     include: {
       problems: {
         orderBy: { number: "asc" },
@@ -112,8 +112,8 @@ export async function getProblemSetByCode(code: string) {
 // ─── Problem detail page ──────────────────────────────────────────────
 
 export async function getProblemByCodeAndNumber(code: string, number: number) {
-  const problemSet = await prisma.problemSet.findUnique({
-    where: { code },
+  const problemSet = await prisma.problemSet.findFirst({
+    where: { code, status: "PUBLISHED" },
     select: { id: true, name: true, code: true },
   });
   if (!problemSet) return null;
@@ -237,7 +237,7 @@ export async function searchProblems(query: string, limit = 50) {
   return prisma.problem.findMany({
     where: {
       description: { contains: query, mode: "insensitive" },
-      problemSet: { published: true, code: { not: null } },
+      problemSet: { status: "PUBLISHED", code: { not: null } },
     },
     take: limit,
     select: {
@@ -254,11 +254,55 @@ export async function searchProblems(query: string, limit = 50) {
 
 // ─── User profile page ───────────────────────────────────────────────
 
+// ─── Problem Factory ──────────────────────────────────────────────────
+
+export async function getDraftProblemSets() {
+  return prisma.problemSet.findMany({
+    where: { status: { not: "PUBLISHED" } },
+    orderBy: { updatedAt: "desc" },
+    include: {
+      _count: { select: { problems: true } },
+    },
+  });
+}
+
+export async function getProblemSetById(id: number) {
+  return prisma.problemSet.findUnique({
+    where: { id },
+    include: {
+      problems: {
+        orderBy: { number: "asc" },
+        select: {
+          id: true,
+          number: true,
+          description: true,
+        },
+      },
+      extraDescriptions: {
+        orderBy: { startNumber: "asc" },
+      },
+    },
+  });
+}
+
+export async function getProblemBySetAndNumber(problemSetId: number, number: number) {
+  return prisma.problem.findFirst({
+    where: { problemSetId, number },
+  });
+}
+
+export async function isAdmin(userId: number) {
+  const admin = await prisma.admin.findUnique({ where: { userId } });
+  return !!admin;
+}
+
+// ─── User profile page ───────────────────────────────────────────────
+
 export async function getUserRecentAnswers(userId: number, limit: number) {
   return prisma.answer.findMany({
     where: {
       authorId: userId,
-      problem: { problemSet: { published: true, code: { not: null } } },
+      problem: { problemSet: { status: "PUBLISHED", code: { not: null } } },
     },
     orderBy: { createdAt: "desc" },
     take: limit,

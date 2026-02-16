@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { profilePicUrl } from "@/lib/format";
+import { House } from 'lucide-react';
 
 export default async function Header() {
   const session = await auth();
@@ -24,6 +25,7 @@ export default async function Header() {
             href="/"
             className="text-white/80 hover:text-white"
           >
+            <House size={18} className="inline-block mr-1" />
             Beranda
           </Link>
           {session?.user ? (

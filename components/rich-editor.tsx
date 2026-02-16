@@ -412,6 +412,7 @@ interface RichEditorProps {
   minHeight?: string;
   minContentLength?: number;
   onCancel?: () => void;
+  initialContent?: string;
 }
 
 export default function RichEditor({
@@ -421,6 +422,7 @@ export default function RichEditor({
   minHeight = "20rem",
   minContentLength = 10,
   onCancel,
+  initialContent,
 }: RichEditorProps) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -448,6 +450,7 @@ export default function RichEditor({
       MathInline,
       Placeholder.configure({ placeholder }),
     ],
+    content: initialContent || "",
     immediatelyRender: false,
     editorProps: {
       attributes: {
