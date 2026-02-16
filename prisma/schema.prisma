@@ -32,7 +32,7 @@ model User {
   lastName          String    @map("last_name") @db.VarChar(50)
   username          String    @unique @db.VarChar(20)
   email             String    @unique @db.VarChar(100)
-  password          String    @db.VarChar(60)
+  password          String?   @db.VarChar(60)
   confirmed         Boolean   @default(false)
   confirmationCode  String?   @map("confirmation_code") @db.VarChar(100)
   rememberToken     String?   @map("remember_token") @db.VarChar(100)
