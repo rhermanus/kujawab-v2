@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProblemByCodeAndNumber } from "@/lib/queries";
+import { getProblemByCodeAndNumber, getNavigableNumbers } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 import ProfilePic from "@/components/profile-pic";
 import HtmlContent from "@/components/html-content";
@@ -9,6 +9,7 @@ import AnswerActions from "@/components/answer-actions";
 import VoteButtons from "@/components/vote-buttons";
 import CommentSection from "@/components/comment-section";
 import { auth } from "@/auth";
+import { ChevronLeft, ChevronRight, PenLine } from "lucide-react";
 
 export default async function ProblemPage({
   params,
@@ -33,6 +34,11 @@ export default async function ProblemPage({
   const isLoggedIn = !!session?.user;
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
 
+  const navNumbers = await getNavigableNumbers(problemSet.id);
+  const currentIdx = navNumbers.indexOf(problems[0].number!);
+  const prevNumber = currentIdx > 0 ? navNumbers[currentIdx - 1] : null;
+  const nextNumber = currentIdx < navNumbers.length - 1 ? navNumbers[currentIdx + 1] : null;
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6">
@@ -44,6 +50,50 @@ export default async function ProblemPage({
       <h1 className="text-2xl font-bold mb-6">
         {problemSet.name}, Nomor {numberLabel}
       </h1>
+
+      {/* Quick shortcuts */}
+      <div className="flex items-center justify-center gap-4 mb-6">
+        {prevNumber !== null ? (
+          <Link
+            href={`/${code}/${prevNumber}`}
+            className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title={`Soal ${prevNumber}`}
+          >
+            <ChevronLeft size={18} />
+            <span className="hidden sm:inline">Sebelumnya</span>
+          </Link>
+        ) : (
+          <span className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm opacity-30 cursor-default">
+            <ChevronLeft size={18} />
+            <span className="hidden sm:inline">Sebelumnya</span>
+          </span>
+        )}
+
+        <a
+          href="#answer-editor"
+          className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          title="Tulis jawaban"
+        >
+          <PenLine size={18} />
+          <span className="hidden sm:inline">Tulis Jawaban</span>
+        </a>
+
+        {nextNumber !== null ? (
+          <Link
+            href={`/${code}/${nextNumber}`}
+            className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title={`Soal ${nextNumber}`}
+          >
+            <span className="hidden sm:inline">Selanjutnya</span>
+            <ChevronRight size={18} />
+          </Link>
+        ) : (
+          <span className="flex items-center gap-1 rounded-lg border px-3 py-2 text-sm opacity-30 cursor-default">
+            <span className="hidden sm:inline">Selanjutnya</span>
+            <ChevronRight size={18} />
+          </span>
+        )}
+      </div>
 
       {/* Extra description */}
       {extraDescription && (
@@ -145,6 +195,7 @@ export default async function ProblemPage({
       </div>
 
       {/* Write answer */}
+      <div id="answer-editor" />
       {session?.user ? (
         <AnswerEditor problemId={problems[0].id} />
       ) : (

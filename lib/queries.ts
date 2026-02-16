@@ -109,6 +109,34 @@ export async function getProblemSetByCode(code: string) {
   });
 }
 
+// ─── Problem navigation ───────────────────────────────────────────────
+
+export async function getNavigableNumbers(problemSetId: number) {
+  const [problems, extras] = await Promise.all([
+    prisma.problem.findMany({
+      where: { problemSetId },
+      orderBy: { number: "asc" },
+      select: { number: true },
+    }),
+    prisma.extraDescription.findMany({
+      where: { problemSetId },
+      select: { startNumber: true, endNumber: true },
+    }),
+  ]);
+
+  // For clustered problems, only the startNumber is a valid page entry
+  const clusteredNumbers = new Set<number>();
+  for (const e of extras) {
+    for (let n = e.startNumber + 1; n <= e.endNumber; n++) {
+      clusteredNumbers.add(n);
+    }
+  }
+
+  return problems
+    .map((p) => p.number)
+    .filter((n): n is number => n !== null && !clusteredNumbers.has(n));
+}
+
 // ─── Problem detail page ──────────────────────────────────────────────
 
 export async function getProblemByCodeAndNumber(code: string, number: number) {
