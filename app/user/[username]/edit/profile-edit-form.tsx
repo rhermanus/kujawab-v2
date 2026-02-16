@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { profilePicUrl } from "@/lib/format";
+import ProfilePic from "@/components/profile-pic";
 import { updateProfileAction } from "@/lib/profile-actions";
 
 interface User {
@@ -79,7 +79,7 @@ export default function ProfileEditForm({ user }: { user: User }) {
     }
   }
 
-  const displayPic = previewUrl ?? profilePicUrl(profilePicture);
+  const displayPic = previewUrl ?? null;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,12 +92,18 @@ export default function ProfileEditForm({ user }: { user: User }) {
           disabled={uploading}
           className="relative group cursor-pointer"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={displayPic}
-            alt="Foto profil"
-            className={`w-20 h-20 rounded-full object-cover border${uploading ? " opacity-50" : ""}`}
-          />
+          {displayPic ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={displayPic}
+              alt="Foto profil"
+              className={`w-20 h-20 rounded-full object-cover border${uploading ? " opacity-50" : ""}`}
+            />
+          ) : (
+            <div className={uploading ? "opacity-50" : ""}>
+              <ProfilePic path={profilePicture} alt="Foto profil" className="w-20 h-20" />
+            </div>
+          )}
           {uploading ? (
             <span className="absolute inset-0 flex items-center justify-center rounded-full">
               <svg className="animate-spin h-6 w-6 text-blue-600" viewBox="0 0 24 24" fill="none">

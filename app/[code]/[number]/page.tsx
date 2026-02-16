@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProblemByCodeAndNumber } from "@/lib/queries";
-import { timeAgo, profilePicUrl } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
+import ProfilePic from "@/components/profile-pic";
 import HtmlContent from "@/components/html-content";
 import AnswerEditor from "@/components/answer-editor";
 import AnswerActions from "@/components/answer-actions";
@@ -84,11 +85,7 @@ export default async function ProblemPage({
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-start gap-3">
                     <Link href={`/user/${answer.author.username}`}>
-                      <img
-                        src={profilePicUrl(answer.author.profilePicture)}
-                        alt={`Foto profil ${answer.author.username}`}
-                        className="w-10 h-10 rounded-full object-cover border"
-                      />
+                      <ProfilePic path={answer.author.profilePicture} alt={`Foto profil ${answer.author.username}`} className="w-10 h-10" />
                     </Link>
                     <div>
                       <div className="flex items-center gap-2">

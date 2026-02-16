@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserByUsername, getUserStats, getUserRecentAnswers, getFollowerCount, getFollowingCount } from "@/lib/queries";
 import { getFollowStatus } from "@/lib/follow-actions";
-import { timeAgo, joinDate, profilePicUrl } from "@/lib/format";
+import { timeAgo, joinDate } from "@/lib/format";
 import ExpandableAnswer from "@/components/expandable-answer";
 import FollowButton from "@/components/follow-button";
+import ProfilePic from "@/components/profile-pic";
 import HtmlContent from "@/components/html-content";
-import ImageLightbox from "@/components/image-lightbox";
+
 
 function snippetFromHtml(html: string, maxLength = 150): { text: string; truncated: boolean } {
   const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
@@ -48,11 +49,7 @@ export default async function UserProfilePage({
 
       {/* Profile header */}
       <div className="flex items-start gap-5 mb-8">
-        <ImageLightbox
-          src={profilePicUrl(user.profilePicture)}
-          alt={`Foto profil ${user.username}`}
-          className="w-20 h-20 rounded-full object-cover border"
-        />
+        <ProfilePic path={user.profilePicture} alt={`Foto profil ${user.username}`} className="w-20 h-20" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">

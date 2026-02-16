@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
-import { profilePicUrl } from "@/lib/format";
 import { getUnreadCount } from "@/lib/notifications";
 import NotificationBell from "@/components/notification-bell";
+import ProfilePic from "@/components/profile-pic";
 import { House } from 'lucide-react';
 
 export default async function Header() {
@@ -40,11 +40,7 @@ export default async function Header() {
                 href={`/user/${session.user.username}`}
                 className="flex items-center gap-2 text-white/90 hover:text-white"
               >
-                <img
-                  src={profilePicUrl(session.user.profilePicture)}
-                  alt=""
-                  className="w-6 h-6 rounded-full object-cover"
-                />
+                <ProfilePic path={session.user.profilePicture} className="w-6 h-6" />
                 {session.user.firstName}
               </Link>
               <form

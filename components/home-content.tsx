@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { profilePicUrl } from "@/lib/format";
+import ProfilePic from "@/components/profile-pic";
 import { Plus } from 'lucide-react';
 
 interface ProblemSetEntry {
@@ -128,11 +128,7 @@ export default function HomeContent({
             {topContributors.map((c) => (
               <li key={c.username}>
                 <Link href={`/user/${c.username}`} className="flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 -mx-2 px-2 py-1 rounded-md">
-                  <img
-                    src={profilePicUrl(c.profilePicture)}
-                    alt={`${c.firstName} ${c.lastName}`}
-                    className="w-8 h-8 rounded-full object-cover shrink-0"
-                  />
+                  <ProfilePic path={c.profilePicture} alt={`${c.firstName} ${c.lastName}`} className="w-8 h-8" />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-blue-600 dark:text-blue-400 truncate">
                       {c.firstName} {c.lastName}

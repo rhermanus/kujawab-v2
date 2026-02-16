@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import HtmlContent from "@/components/html-content";
 import RichEditor from "@/components/rich-editor";
 import { createCommentAction, deleteCommentAction } from "@/lib/comment-actions";
-import { profilePicUrl, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
+import ProfilePic from "@/components/profile-pic";
 import { MessageSquare, Trash2, Loader2 } from "lucide-react";
 
 interface Comment {
@@ -114,11 +115,7 @@ function CommentItem({ comment, canDelete }: { comment: Comment; canDelete: bool
   return (
     <div id={`comment-${comment.id}`} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
       <Link href={`/user/${comment.author.username}`} className="shrink-0">
-        <img
-          src={profilePicUrl(comment.author.profilePicture)}
-          alt={`Foto profil ${comment.author.username}`}
-          className="w-8 h-8 rounded-full object-cover border"
-        />
+        <ProfilePic path={comment.author.profilePicture} alt={`Foto profil ${comment.author.username}`} className="w-8 h-8" />
       </Link>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm">
