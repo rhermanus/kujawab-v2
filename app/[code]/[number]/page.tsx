@@ -4,6 +4,7 @@ import { getProblemByCodeAndNumber } from "@/lib/queries";
 import { timeAgo, profilePicUrl } from "@/lib/format";
 import HtmlContent from "@/components/html-content";
 import AnswerEditor from "@/components/answer-editor";
+import AnswerActions from "@/components/answer-actions";
 import CommentSection from "@/components/comment-section";
 import { auth } from "@/auth";
 
@@ -28,6 +29,7 @@ export default async function ProblemPage({
     : String(number);
 
   const isLoggedIn = !!session?.user;
+  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -113,6 +115,14 @@ export default async function ProblemPage({
                   className=""
                   html={answer.description}
                 />
+
+                {/* Edit/Delete for author */}
+                {currentUserId === answer.author.id && (
+                  <AnswerActions
+                    answerId={answer.id}
+                    currentDescription={answer.description}
+                  />
+                )}
               </div>
 
               {/* Comments */}
@@ -124,6 +134,7 @@ export default async function ProblemPage({
                     createdAt: c.createdAt.toISOString(),
                   }))}
                   isLoggedIn={isLoggedIn}
+                  currentUserId={currentUserId}
                 />
               )}
             </div>

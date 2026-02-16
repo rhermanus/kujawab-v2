@@ -43,3 +43,36 @@ export async function createCommentAction(answerId: number, content: string) {
   revalidatePath(`/${answer.problem.problemSet.code}/${answer.problem.number}`);
   return { success: true, commentId: comment.id };
 }
+
+export async function deleteCommentAction(commentId: number) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  }
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      authorId: true,
+      answer: {
+        select: {
+          problem: {
+            select: { number: true, problemSet: { select: { code: true } } },
+          },
+        },
+      },
+    },
+  });
+
+  if (!comment) return { success: false, error: "Komentar tidak ditemukan." };
+  if (comment.authorId !== Number(session.user.id)) {
+    return { success: false, error: "Anda hanya bisa menghapus komentar sendiri." };
+  }
+
+  await prisma.comment.delete({ where: { id: commentId } });
+
+  if (comment.answer.problem.problemSet.code) {
+    revalidatePath(`/${comment.answer.problem.problemSet.code}/${comment.answer.problem.number}`);
+  }
+  return { success: true };
+}

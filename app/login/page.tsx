@@ -63,6 +63,11 @@ export default function LoginPage() {
         <Button type="submit" className="w-full" disabled={loading || googleLoading}>
           {loading ? "Memproses..." : "Masuk"}
         </Button>
+        <div className="text-right">
+          <Link href="/forgot-password" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            Lupa kata sandi?
+          </Link>
+        </div>
       </form>
 
       <div className="my-6 flex items-center gap-4">

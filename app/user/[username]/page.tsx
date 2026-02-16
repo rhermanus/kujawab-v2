@@ -52,12 +52,20 @@ export default async function UserProfilePage({
               {user.firstName} {user.lastName}
             </h1>
             {isOwnProfile && (
-              <Link
-                href={`/user/${user.username}/edit`}
-                className="rounded-md border px-3 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                Edit profil
-              </Link>
+              <div className="flex gap-2">
+                <Link
+                  href={`/user/${user.username}/edit`}
+                  className="rounded-md border px-3 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  Edit profil
+                </Link>
+                <Link
+                  href="/change-password"
+                  className="rounded-md border px-3 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  Ubah kata sandi
+                </Link>
+              </div>
             )}
           </div>
           <p className="text-zinc-600 dark:text-zinc-400">@{user.username}</p>
