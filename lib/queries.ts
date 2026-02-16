@@ -310,7 +310,7 @@ export async function getUserRecentAnswers(userId: number, limit: number) {
       authorId: userId,
       problem: { problemSet: { status: "PUBLISHED", code: { not: null } } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit,
     select: {
       id: true,
@@ -328,4 +328,43 @@ export async function getUserRecentAnswers(userId: number, limit: number) {
       _count: { select: { comments: true } },
     },
   });
+}
+
+const recentAnswerSelect = {
+  id: true,
+  description: true,
+  createdAt: true,
+  problem: {
+    select: {
+      number: true,
+      problemSet: {
+        select: { code: true, name: true },
+      },
+    },
+  },
+  votes: { select: { value: true } },
+  _count: { select: { comments: true } },
+} as const;
+
+export type RecentAnswer = NonNullable<Awaited<ReturnType<typeof getUserRecentAnswersPaginated>>["answers"][number]>;
+
+export async function getUserRecentAnswersPaginated(userId: number, limit: number, cursor?: number) {
+  const answers = await prisma.answer.findMany({
+    where: {
+      authorId: userId,
+      problem: { problemSet: { status: "PUBLISHED", code: { not: null } } },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: recentAnswerSelect,
+  });
+
+  const hasMore = answers.length > limit;
+  if (hasMore) answers.pop();
+
+  return {
+    answers,
+    nextCursor: hasMore ? answers[answers.length - 1].id : null,
+  };
 }

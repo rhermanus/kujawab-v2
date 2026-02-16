@@ -1,20 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getUserByUsername, getUserStats, getUserRecentAnswers, getFollowerCount, getFollowingCount } from "@/lib/queries";
+import { getUserByUsername, getUserStats, getUserRecentAnswersPaginated, getFollowerCount, getFollowingCount } from "@/lib/queries";
 import { getFollowStatus } from "@/lib/follow-actions";
-import { timeAgo, joinDate } from "@/lib/format";
-import ExpandableAnswer from "@/components/expandable-answer";
+import { joinDate } from "@/lib/format";
 import FollowButton from "@/components/follow-button";
 import ProfilePic from "@/components/profile-pic";
-import HtmlContent from "@/components/html-content";
-
-
-function snippetFromHtml(html: string, maxLength = 150): { text: string; truncated: boolean } {
-  const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return { text, truncated: false };
-  return { text: text.slice(0, maxLength) + "...", truncated: true };
-}
+import UserAnswers from "@/components/user-answers";
 
 export default async function UserProfilePage({
   params,
@@ -31,9 +23,9 @@ export default async function UserProfilePage({
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
 
-  const [stats, recentAnswers, followerCount, followingCount, isFollowing] = await Promise.all([
+  const [stats, { answers: initialAnswers, nextCursor }, followerCount, followingCount, isFollowing] = await Promise.all([
     getUserStats(user.id),
-    getUserRecentAnswers(user.id, 10),
+    getUserRecentAnswersPaginated(user.id, 10),
     getFollowerCount(user.id),
     getFollowingCount(user.id),
     currentUserId && !isOwnProfile ? getFollowStatus(currentUserId, user.id) : Promise.resolve(false),
@@ -102,40 +94,7 @@ export default async function UserProfilePage({
       </div>
 
       <h2 className="text-lg font-semibold mb-4">Jawaban terbaru</h2>
-      {recentAnswers.length > 0 ? (
-        <div className="border rounded-lg divide-y">
-          {recentAnswers.map((answer) => {
-            const problemUrl = answer.problem.problemSet.code && answer.problem.number
-              ? `/${answer.problem.problemSet.code}/${answer.problem.number}`
-              : null;
-
-            return (
-              <div key={answer.id} className="p-4">
-                <div className="font-medium">
-                  <Link
-                    href={`/${answer.problem.problemSet.code}/${answer.problem.number}`}
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    {answer.problem.problemSet.name}, nomor {answer.problem.number}
-                  </Link>
-                </div>
-                {snippetFromHtml(answer.description).truncated ? (
-                  <ExpandableAnswer snippet={snippetFromHtml(answer.description).text} fullHtml={answer.description} />
-                ) : (
-                  <HtmlContent html={answer.description} className="text-sm mt-1" />
-                )}
-                <div className="flex gap-3 text-xs text-zinc-500 mt-1">
-                  <span>{timeAgo(answer.createdAt)}</span>
-                  <span>{answer.votes.reduce((sum, v) => sum + v.value, 0)} poin</span>
-                  <span>{answer._count.comments} komentar</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-zinc-600 dark:text-zinc-400">Belum ada jawaban.</p>
-      )}
+      <UserAnswers initialAnswers={initialAnswers} initialNextCursor={nextCursor} userId={user.id} />
     </main>
   );
 }
