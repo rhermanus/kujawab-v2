@@ -1,47 +1,42 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, Suspense } from "react";
 import { sendGAEvent } from "@next/third-parties/google";
 
-export default function Analytics() {
+export { sendGAEvent };
+
+export function trackEvent(action: string, params?: Record<string, unknown>) {
+  sendGAEvent({ event_name: action, ...params });
+}
+
+function PageViewTracker() {
   const pathname = usePathname();
-  const isFirst = useRef(true);
-  const prevTitleRef = useRef("");
+  const searchParams = useSearchParams();
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false;
-      prevTitleRef.current = document.title;
+    // Skip the first render — gtag handles the initial page_view
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
       return;
     }
 
-    const prevTitle = prevTitleRef.current;
-    const send = () => {
-      prevTitleRef.current = document.title;
-      sendGAEvent("event", "page_view", {
-        page_path: pathname,
-        page_location: window.location.href,
-        page_title: document.title,
-      });
-    };
+    const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
 
-    // Title already updated by Next.js before this effect ran
-    if (document.title && document.title !== prevTitle) {
-      send();
-      return;
-    }
-
-    // Otherwise wait for Next.js to update <title>
-    const observer = new MutationObserver(() => {
-      if (document.title && document.title !== prevTitle) {
-        observer.disconnect();
-        send();
-      }
+    window.gtag?.("event", "page_view", {
+      page_path: url,
+      page_title: document.title,
     });
-    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   return null;
+}
+
+export function RouteChangeTracker() {
+  return (
+    <Suspense fallback={null}>
+      <PageViewTracker />
+    </Suspense>
+  );
 }

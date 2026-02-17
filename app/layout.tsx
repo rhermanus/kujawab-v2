@@ -5,7 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import Analytics from "@/components/analytics";
+import { RouteChangeTracker } from "@/components/analytics";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -44,9 +44,13 @@ export default function RootLayout({
             <Footer />
           </div>
         </SessionProvider>
-        <Analytics />
       </body>
-      {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
+      {GA_ID && (
+        <>
+          <GoogleAnalytics gaId={GA_ID} />
+          <RouteChangeTracker />
+        </>
+      )}
     </html>
   );
 }
