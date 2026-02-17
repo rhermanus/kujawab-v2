@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
       return updateSet(body);
     case "save_problem":
       return saveProblem(body);
+    case "save_problems_batch":
+      return saveProblemsBatch(body);
     case "save_extra_description":
       return saveExtraDescription(body);
     case "delete_extra_description":
@@ -148,6 +150,53 @@ async function saveProblem(body: { problemSetId?: number; number?: number; descr
     });
     return NextResponse.json({ success: true, id: problem.id, created: true });
   }
+}
+
+async function saveProblemsBatch(body: {
+  problemSetId?: number;
+  problems?: { number: number; description: string }[];
+}) {
+  const { problemSetId, problems } = body;
+  if (!problemSetId || !problems || !Array.isArray(problems) || problems.length === 0) {
+    return NextResponse.json({ error: "problemSetId and non-empty problems array are required" }, { status: 400 });
+  }
+
+  const set = await prisma.problemSet.findUnique({ where: { id: problemSetId } });
+  if (!set) return NextResponse.json({ error: "Problem set not found" }, { status: 404 });
+
+  const results: { number: number; id: number; created: boolean; error?: string }[] = [];
+
+  for (const p of problems) {
+    if (!p.number || !p.description) {
+      results.push({ number: p.number, id: 0, created: false, error: "number and description are required" });
+      continue;
+    }
+    if (p.number < 1 || p.number > set.problemCount) {
+      results.push({ number: p.number, id: 0, created: false, error: `number must be between 1 and ${set.problemCount}` });
+      continue;
+    }
+    const trimmed = p.description.trim();
+    if (trimmed.length < 10) {
+      results.push({ number: p.number, id: 0, created: false, error: "description too short" });
+      continue;
+    }
+
+    const existing = await prisma.problem.findFirst({
+      where: { problemSetId, number: p.number },
+    });
+
+    if (existing) {
+      await prisma.problem.update({ where: { id: existing.id }, data: { description: trimmed } });
+      results.push({ number: p.number, id: existing.id, created: false });
+    } else {
+      const created = await prisma.problem.create({
+        data: { problemSetId, number: p.number, description: trimmed },
+      });
+      results.push({ number: p.number, id: created.id, created: true });
+    }
+  }
+
+  return NextResponse.json({ success: true, results });
 }
 
 async function saveExtraDescription(body: {
