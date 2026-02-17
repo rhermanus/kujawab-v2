@@ -13,21 +13,30 @@ export function trackEvent(action: string, params?: Record<string, unknown>) {
 function PageViewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isFirstRender = useRef(true);
+  const prevPathRef = useRef(pathname);
 
   useEffect(() => {
-    // Skip the first render — gtag handles the initial page_view
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    // Skip if pathname hasn't actually changed (e.g. initial render)
+    if (prevPathRef.current === pathname) return;
+    prevPathRef.current = pathname;
 
     const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
 
-    window.gtag?.("event", "page_view", {
-      page_path: url,
-      page_title: document.title,
-    });
+    // Next.js clears document.title during navigation then sets the new one.
+    // Poll until the new title is available before sending the event.
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (document.title || attempts >= 50) {
+        clearInterval(interval);
+        sendGAEvent("event", "page_view", {
+          page_path: url,
+          page_title: document.title,
+        });
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   }, [pathname, searchParams]);
 
   return null;
