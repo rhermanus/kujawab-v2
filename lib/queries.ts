@@ -91,7 +91,7 @@ export async function getRecentAnswers(limit: number) {
 
 export async function getProblemSetByCode(code: string) {
   return prisma.problemSet.findFirst({
-    where: { code, status: "PUBLISHED" },
+    where: { code: code.toUpperCase(), status: "PUBLISHED" },
     include: {
       problems: {
         orderBy: { number: "asc" },
@@ -141,7 +141,7 @@ export async function getNavigableNumbers(problemSetId: number) {
 
 export async function getProblemByCodeAndNumber(code: string, number: number) {
   const problemSet = await prisma.problemSet.findFirst({
-    where: { code, status: "PUBLISHED" },
+    where: { code: code.toUpperCase(), status: "PUBLISHED" },
     select: { id: true, name: true, code: true },
   });
   if (!problemSet) return null;

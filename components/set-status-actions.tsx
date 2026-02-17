@@ -6,6 +6,7 @@ import {
   markReadyForReviewAction,
   revertToDraftAction,
   publishProblemSetAction,
+  unpublishProblemSetAction,
 } from "@/lib/problemfactory-actions";
 import { Loader2 } from "lucide-react";
 
@@ -85,6 +86,17 @@ export default function SetStatusActions({
             </button>
           )}
         </>
+      )}
+
+      {status === "PUBLISHED" && isAdmin && (
+        <button
+          onClick={() => handleAction(unpublishProblemSetAction)}
+          disabled={submitting}
+          className="px-4 py-1.5 text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 flex items-center gap-2"
+        >
+          {submitting && <Loader2 size={14} className="animate-spin" />}
+          Batalkan Penerbitan
+        </button>
       )}
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

@@ -30,7 +30,7 @@ export default async function SetEditorPage({
   const problemSet = await getProblemSetById(id);
 
   if (!problemSet) notFound();
-  if (problemSet.status === "PUBLISHED") redirect(`/${problemSet.code}`);
+  if (problemSet.status === "PUBLISHED" && !userIsAdmin) redirect(`/${problemSet.code}`);
 
   // Build problem map for quick lookup
   const problemMap = new Map(

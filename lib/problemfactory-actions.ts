@@ -63,12 +63,12 @@ export async function updateProblemSetAction(
   }
 
   if (data.code !== undefined) {
-    const trimmed = data.code.trim().toLowerCase();
+    const trimmed = data.code.trim().toUpperCase();
     if (!trimmed || trimmed.length > 15) {
       return { success: false, error: "Kode harus 1-15 karakter." };
     }
-    if (!/^[a-z0-9-]+$/.test(trimmed)) {
-      return { success: false, error: "Kode hanya boleh huruf kecil, angka, dan tanda hubung." };
+    if (!/^[A-Z0-9-]+$/.test(trimmed)) {
+      return { success: false, error: "Kode hanya boleh huruf, angka, dan tanda hubung." };
     }
     // Check uniqueness
     const existing = await prisma.problemSet.findUnique({ where: { code: trimmed } });
@@ -229,6 +229,28 @@ export async function revertToDraftAction(id: number) {
 
   revalidatePath(`/problemfactory/${id}`);
   revalidatePath("/problemfactory");
+  return { success: true };
+}
+
+export async function unpublishProblemSetAction(id: number) {
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+
+  if (!isAdmin(user.username)) return { success: false, error: "Hanya admin yang bisa membatalkan penerbitan set." };
+
+  const set = await prisma.problemSet.findUnique({ where: { id } });
+  if (!set) return { success: false, error: "Set tidak ditemukan." };
+  if (set.status !== "PUBLISHED") return { success: false, error: "Set harus berstatus 'Diterbitkan'." };
+
+  await prisma.problemSet.update({
+    where: { id },
+    data: { status: "DRAFT" },
+  });
+
+  revalidatePath(`/problemfactory/${id}`);
+  revalidatePath("/problemfactory");
+  revalidatePath("/");
+  if (set.code) revalidatePath(`/${set.code}`);
   return { success: true };
 }
 

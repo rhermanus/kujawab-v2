@@ -94,7 +94,7 @@ export default function SetMetadataEditor({
                 type="text"
                 value={codeVal}
                 onChange={(e) => setCodeVal(e.target.value)}
-                placeholder="e.g. osn-mat-2025"
+                placeholder="e.g. OSN-MAT-2025"
                 className="border rounded-lg px-3 py-1.5 text-sm bg-transparent dark:border-zinc-700 w-44"
               />
               <button
