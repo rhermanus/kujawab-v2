@@ -20,7 +20,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kujawab",
+  title: {
+    default: "Kujawab",
+    template: "%s — Kujawab",
+  },
   description: "Kumpulan Soal dan Jawaban Olimpiade Sains",
 };
 

@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getProblemSetById, isAdmin } from "@/lib/queries";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const ps = await getProblemSetById(Number(id));
+  return { title: ps?.name ?? "Problem Set" };
+}
 import HtmlContent from "@/components/html-content";
 import SetMetadataEditor from "@/components/set-metadata-editor";
 import ExtraDescEditor from "@/components/extra-desc-editor";

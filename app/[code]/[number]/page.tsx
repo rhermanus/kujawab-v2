@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProblemByCodeAndNumber, getNavigableNumbers } from "@/lib/queries";
+
+export async function generateMetadata({ params }: { params: Promise<{ code: string; number: string }> }): Promise<Metadata> {
+  const { code, number } = await params;
+  const result = await getProblemByCodeAndNumber(code, parseInt(number));
+  if (!result) return { title: "Soal" };
+  return { title: `${result.problemSet.name}, No. ${number}` };
+}
 import { timeAgo } from "@/lib/format";
 import ProfilePic from "@/components/profile-pic";
 import HtmlContent from "@/components/html-content";

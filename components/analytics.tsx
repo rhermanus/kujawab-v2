@@ -18,19 +18,25 @@ export default function Analytics() {
   useEffect(() => {
     // Skip the initial load — already tracked by the inline gtag config
     if (isFirst.current) {
-      console.log("Initial page load, skipping GA page_view event");
       isFirst.current = false;
       return;
     }
-    console.log("Pathname changed to", pathname);
     if (!GA_ID || !window.gtag) return;
-    console.log("Tracking page_view for", pathname);
-    window.gtag("event", "page_view", {
-      page_path: pathname,
-      page_location: window.location.href,
-      page_title: document.title,
-      send_to: GA_ID,
+    const prevTitle = document.title;
+    // Wait for Next.js to update <title> in <head>
+    const observer = new MutationObserver(() => {
+      if (document.title !== prevTitle) {
+        observer.disconnect();
+        window.gtag!("event", "page_view", {
+          page_path: pathname,
+          page_location: window.location.href,
+          page_title: document.title,
+          send_to: GA_ID,
+        });
+      }
     });
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
   }, [pathname]);
 
   return null;

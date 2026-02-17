@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getProblemSetById, getProblemBySetAndNumber } from "@/lib/queries";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string; number: string }> }): Promise<Metadata> {
+  const { id, number } = await params;
+  const ps = await getProblemSetById(Number(id));
+  return { title: ps ? `${ps.name}, No. ${number}` : "Soal" };
+}
 import ProblemEditor from "@/components/problem-editor";
 
 export default async function ProblemEditorPage({

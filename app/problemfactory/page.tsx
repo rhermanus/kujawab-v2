@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = { title: "Problem Factory" };
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getDraftProblemSets, isAdmin } from "@/lib/queries";

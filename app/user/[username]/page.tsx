@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserByUsername, getUserStats, getUserRecentAnswersPaginated, getFollowerCount, getFollowingCount } from "@/lib/queries";
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
+  const user = await getUserByUsername(decodeURIComponent(username));
+  if (!user) return { title: "Pengguna" };
+  return { title: `${user.firstName} ${user.lastName}` };
+}
 import { getFollowStatus } from "@/lib/follow-actions";
 import { joinDate } from "@/lib/format";
 import FollowButton from "@/components/follow-button";
@@ -41,7 +49,7 @@ export default async function UserProfilePage({
 
       {/* Profile header */}
       <div className="flex items-start gap-5 mb-8">
-        <ProfilePic path={user.profilePicture} alt={`Foto profil ${user.username}`} className="w-20 h-20" />
+        <ProfilePic path={user.profilePicture} alt={`Foto profil ${user.username}`} className="w-20 h-20" expandable />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">

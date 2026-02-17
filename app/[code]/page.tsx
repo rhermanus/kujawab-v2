@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProblemSetByCode } from "@/lib/queries";
 import HtmlContent from "@/components/html-content";
+
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
+  const { code } = await params;
+  const problemSet = await getProblemSetByCode(code);
+  return { title: problemSet?.name ?? "Soal" };
+}
 
 export default async function ProblemSetPage({
   params,

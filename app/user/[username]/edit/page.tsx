@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+
+export const metadata: Metadata = { title: "Edit Profil" };
 import { auth } from "@/auth";
 import { getUserByUsername } from "@/lib/queries";
 import ProfileEditForm from "./profile-edit-form";
