@@ -32,8 +32,13 @@ interface RecentAnswer {
   timeAgo: string;
 }
 
+interface LevelGroup {
+  level: string;
+  sets: ProblemSetEntry[];
+}
+
 interface HomeContentProps {
-  problemSetsByCategory: Record<string, ProblemSetEntry[]>;
+  problemSetsByCategory: Record<string, LevelGroup[]>;
   topContributors: Contributor[];
   recentAnswers: RecentAnswer[];
 }
@@ -46,6 +51,7 @@ export default function HomeContent({
   const { data: session } = useSession();
   const subjects = Object.keys(problemSetsByCategory);
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<Record<string, string>>({});
 
   function toggle(subject: string) {
     setOpen((s) => ({ ...s, [subject]: !s[subject] }));
@@ -72,36 +78,55 @@ export default function HomeContent({
               </button>
 
               {open[sub] && (
-                <div className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-zinc-600 dark:text-zinc-400">
-                        <th className="pb-2">Set Soal</th>
-                        <th className="pb-2">Jumlah Soal</th>
-                        <th className="pb-2">Jumlah Jawaban</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(problemSetsByCategory[sub] || []).map((set) => (
-                        <tr key={set.code} className="border-t">
-                          <td className="py-3">
-                            <Link href={`/${set.code}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                              {set.name}
-                            </Link>
-                          </td>
-                          <td className="py-3">{set.problems}</td>
-                          <td className="py-3">{set.answers}</td>
-                        </tr>
-                      ))}
-                      {(problemSetsByCategory[sub] || []).length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="py-3 text-zinc-600 dark:text-zinc-400">
-                            Belum ada set soal untuk mata pelajaran ini.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800">
+                  {(() => {
+                    const groups = problemSetsByCategory[sub] || [];
+                    if (groups.length === 0) {
+                      return (
+                        <p className="p-4 text-sm text-zinc-600 dark:text-zinc-400">
+                          Belum ada set soal untuk mata pelajaran ini.
+                        </p>
+                      );
+                    }
+                    const current = activeTab[sub] || groups[0].level;
+                    const currentGroup = groups.find((g) => g.level === current) || groups[0];
+                    return (
+                      <>
+                        <div className="flex border-b border-zinc-100 dark:border-zinc-800">
+                          {groups.map((group) => (
+                            <button
+                              key={group.level}
+                              onClick={() => setActiveTab((s) => ({ ...s, [sub]: group.level }))}
+                              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                                (current === group.level)
+                                  ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                                  : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                              }`}
+                            >
+                              {group.level}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="p-4">
+                          <table className="w-full text-sm">
+                            <tbody>
+                              {currentGroup.sets.map((set) => (
+                                <tr key={set.code} className="border-t first:border-t-0">
+                                  <td className="py-2">
+                                    <Link href={`/${set.code}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                                      {set.name}
+                                    </Link>
+                                  </td>
+                                  <td className="py-2 text-zinc-500 text-right w-16">{set.problems} soal</td>
+                                  <td className="py-2 text-zinc-500 text-right w-24">{set.answers} jawaban</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>

@@ -25,18 +25,55 @@ export async function getPublishedProblemSetsByCategory() {
     ORDER BY ps.category, ps.name
   `;
 
-  const grouped: Record<string, { code: string; name: string; problems: number; answers: number }[]> = {};
+  // Detect level from problem set name
+  function detectLevel(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes("kabupaten") || n.includes("(osk)") || n.includes("(ksnk)")) return "Kabupaten/Kota";
+    if (n.includes("provinsi") || n.includes("(osp)") || n.includes("(ksnp)")) return "Provinsi";
+    if (n.includes("nasional") || n.includes("(osn)") || n.includes("(ksn)")) return "Nasional";
+    return "Lainnya";
+  }
+
+  // Extract year from name for sorting
+  function extractYear(name: string): number {
+    const m = name.match(/\b(19|20)\d{2}\b/);
+    return m ? Number(m[0]) : 0;
+  }
+
+  const LEVEL_ORDER = ["Kabupaten/Kota", "Provinsi", "Nasional", "Lainnya"];
+
+  type SetEntry = { code: string; name: string; problems: number; answers: number };
+  const grouped: Record<string, Record<string, SetEntry[]>> = {};
+
   for (const row of rows) {
-    const label = categoryLabel(row.category);
-    if (!grouped[label]) grouped[label] = [];
-    grouped[label].push({
+    const cat = categoryLabel(row.category);
+    const level = detectLevel(row.name);
+    if (!grouped[cat]) grouped[cat] = {};
+    if (!grouped[cat][level]) grouped[cat][level] = [];
+    grouped[cat][level].push({
       code: row.code,
       name: row.name,
       problems: row.problem_count,
       answers: Number(row.answer_count),
     });
   }
-  return grouped;
+
+  // Sort each level group by year descending
+  for (const cat of Object.values(grouped)) {
+    for (const sets of Object.values(cat)) {
+      sets.sort((a, b) => extractYear(b.name) - extractYear(a.name));
+    }
+  }
+
+  // Reorder levels within each category
+  const result: Record<string, { level: string; sets: SetEntry[] }[]> = {};
+  for (const [cat, levels] of Object.entries(grouped)) {
+    result[cat] = LEVEL_ORDER
+      .filter((l) => levels[l]?.length)
+      .map((l) => ({ level: l, sets: levels[l] }));
+  }
+
+  return result;
 }
 
 export async function getTopContributors(limit: number) {

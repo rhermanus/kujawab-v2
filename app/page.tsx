@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { getPublishedProblemSetsByCategory, getTopContributors, getRecentAnswers } from "@/lib/queries";
 import { timeAgo } from "@/lib/format";
 import HomeContent from "@/components/home-content";
+
+export const metadata: Metadata = { title: "Beranda" };
 
 export default async function Home() {
   const [problemSetsByCategory, topContributors, recentAnswersRaw] = await Promise.all([
