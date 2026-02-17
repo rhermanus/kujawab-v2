@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import Analytics from "@/components/analytics";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -42,13 +43,14 @@ export default function RootLayout({
             <Script id="google-analytics" strategy="afterInteractive">
               {`
                 window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_ID}');
+                window.gtag = function(){dataLayer.push(arguments);};
+                window.gtag('js', new Date());
+                window.gtag('config', '${GA_ID}');
               `}
             </Script>
           </>
         )}
+        {GA_ID && <Analytics />}
         <SessionProvider>
           <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 flex flex-col">
             <Header />
