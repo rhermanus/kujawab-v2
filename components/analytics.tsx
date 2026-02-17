@@ -2,37 +2,41 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+import { sendGAEvent } from "@next/third-parties/google";
 
 export default function Analytics() {
   const pathname = usePathname();
   const isFirst = useRef(true);
+  const prevTitleRef = useRef("");
 
   useEffect(() => {
-    // Skip the initial load — already tracked by the inline gtag config
     if (isFirst.current) {
       isFirst.current = false;
+      prevTitleRef.current = document.title;
       return;
     }
-    if (!GA_ID || !window.gtag) return;
-    const prevTitle = document.title;
-    // Wait for Next.js to update <title> in <head>
+
+    const prevTitle = prevTitleRef.current;
+    const send = () => {
+      prevTitleRef.current = document.title;
+      sendGAEvent("event", "page_view", {
+        page_path: pathname,
+        page_location: window.location.href,
+        page_title: document.title,
+      });
+    };
+
+    // Title already updated by Next.js before this effect ran
+    if (document.title && document.title !== prevTitle) {
+      send();
+      return;
+    }
+
+    // Otherwise wait for Next.js to update <title>
     const observer = new MutationObserver(() => {
-      if (document.title !== prevTitle) {
+      if (document.title && document.title !== prevTitle) {
         observer.disconnect();
-        window.gtag!("event", "page_view", {
-          page_path: pathname,
-          page_location: window.location.href,
-          page_title: document.title,
-          send_to: GA_ID,
-        });
+        send();
       }
     });
     observer.observe(document.head, { childList: true, subtree: true, characterData: true });
