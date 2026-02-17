@@ -14,11 +14,13 @@ export default function SetStatusActions({
   status,
   isAdmin,
   hasCode,
+  hasCategory,
 }: {
   id: number;
   status: string;
   isAdmin: boolean;
   hasCode: boolean;
+  hasCategory: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +76,8 @@ export default function SetStatusActions({
           {isAdmin && (
             <button
               onClick={() => handleAction(publishProblemSetAction)}
-              disabled={submitting || !hasCode}
-              title={!hasCode ? "Set harus punya kode" : "Terbitkan set"}
+              disabled={submitting || !hasCode || !hasCategory}
+              title={!hasCode ? "Set harus punya kode" : !hasCategory ? "Set harus punya kategori" : "Terbitkan set"}
               className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}

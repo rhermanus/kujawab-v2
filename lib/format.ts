@@ -39,7 +39,7 @@ export function joinDate(date: Date): string {
   return `Bergabung ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
   KOMPUTER: "Komputer",
   MATEMATIKA: "Matematika",
   FISIKA: "Fisika",

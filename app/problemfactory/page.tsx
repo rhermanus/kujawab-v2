@@ -12,11 +12,8 @@ export default async function ProblemFactoryPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const userId = Number(session.user.id);
-  const [sets, userIsAdmin] = await Promise.all([
-    getDraftProblemSets(),
-    isAdmin(userId),
-  ]);
+  const userIsAdmin = isAdmin(session.user.username);
+  const sets = await getDraftProblemSets();
 
   const draftSets = sets.filter((s) => s.status === "DRAFT");
   const reviewSets = sets.filter((s) => s.status === "READY_FOR_REVIEW");

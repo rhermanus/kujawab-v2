@@ -26,10 +26,8 @@ export default async function SetEditorPage({
   const id = Number(idStr);
   if (isNaN(id)) notFound();
 
-  const [problemSet, userIsAdmin] = await Promise.all([
-    getProblemSetById(id),
-    isAdmin(Number(session.user.id)),
-  ]);
+  const userIsAdmin = isAdmin(session.user.username);
+  const problemSet = await getProblemSetById(id);
 
   if (!problemSet) notFound();
   if (problemSet.status === "PUBLISHED") redirect(`/${problemSet.code}`);
@@ -57,6 +55,7 @@ export default async function SetEditorPage({
         id={problemSet.id}
         name={problemSet.name}
         code={problemSet.code}
+        category={problemSet.category}
         isAdmin={userIsAdmin}
       />
 
@@ -67,6 +66,7 @@ export default async function SetEditorPage({
           status={problemSet.status}
           isAdmin={userIsAdmin}
           hasCode={!!problemSet.code}
+          hasCategory={!!problemSet.category}
         />
       </div>
 

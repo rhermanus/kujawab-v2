@@ -3,23 +3,27 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProblemSetAction } from "@/lib/problemfactory-actions";
+import { CATEGORY_LABELS } from "@/lib/format";
 import { Loader2, Pencil, Check, X } from "lucide-react";
 
 export default function SetMetadataEditor({
   id,
   name,
   code,
+  category,
   isAdmin,
 }: {
   id: number;
   name: string;
   code: string | null;
+  category: string | null;
   isAdmin: boolean;
 }) {
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(name);
   const [codeVal, setCodeVal] = useState(code ?? "");
+  const [categoryVal, setCategoryVal] = useState(category ?? "");
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +84,7 @@ export default function SetMetadataEditor({
         )}
       </div>
 
-      {/* Admin-only: Code URL */}
+      {/* Admin-only: Code URL + Category */}
       {isAdmin && (
         <div className="flex flex-wrap gap-4 items-end">
           <div>
@@ -99,6 +103,29 @@ export default function SetMetadataEditor({
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
               >
                 {saving === "code" && <Loader2 size={12} className="animate-spin" />}
+                Simpan
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-500 mb-1">Kategori</label>
+            <div className="flex items-center gap-2">
+              <select
+                value={categoryVal}
+                onChange={(e) => setCategoryVal(e.target.value)}
+                className="border rounded-lg px-3 py-1.5 text-sm bg-transparent dark:border-zinc-700"
+              >
+                <option value="">— Pilih kategori —</option>
+                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => save("category", { category: categoryVal })}
+                disabled={saving === "category"}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+              >
+                {saving === "category" && <Loader2 size={12} className="animate-spin" />}
                 Simpan
               </button>
             </div>

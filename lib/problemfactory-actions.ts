@@ -10,12 +10,12 @@ async function requireAuth() {
   if (!session?.user?.id) {
     return null;
   }
-  return Number(session.user.id);
+  return { id: Number(session.user.id), username: session.user.username as string };
 }
 
 export async function createProblemSetAction(name: string, problemCount: number, category: string) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const trimmed = name.trim();
   if (!trimmed || trimmed.length > 100) {
@@ -45,8 +45,8 @@ export async function updateProblemSetAction(
   id: number,
   data: { name?: string; code?: string; category?: string }
 ) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const set = await prisma.problemSet.findUnique({ where: { id } });
   if (!set) return { success: false, error: "Set tidak ditemukan." };
@@ -92,8 +92,8 @@ export async function saveProblemAction(
   number: number,
   description: string
 ) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const set = await prisma.problemSet.findUnique({ where: { id: problemSetId } });
   if (!set) return { success: false, error: "Set tidak ditemukan." };
@@ -138,8 +138,8 @@ export async function saveExtraDescriptionAction(
   description: string,
   existingId?: number
 ) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const set = await prisma.problemSet.findUnique({ where: { id: problemSetId } });
   if (!set) return { success: false, error: "Set tidak ditemukan." };
@@ -175,8 +175,8 @@ export async function saveExtraDescriptionAction(
 }
 
 export async function deleteExtraDescriptionAction(id: number) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const ed = await prisma.extraDescription.findUnique({
     where: { id },
@@ -191,8 +191,8 @@ export async function deleteExtraDescriptionAction(id: number) {
 }
 
 export async function markReadyForReviewAction(id: number) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const set = await prisma.problemSet.findUnique({
     where: { id },
@@ -215,8 +215,8 @@ export async function markReadyForReviewAction(id: number) {
 }
 
 export async function revertToDraftAction(id: number) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
   const set = await prisma.problemSet.findUnique({ where: { id } });
   if (!set) return { success: false, error: "Set tidak ditemukan." };
@@ -233,11 +233,10 @@ export async function revertToDraftAction(id: number) {
 }
 
 export async function publishProblemSetAction(id: number) {
-  const userId = await requireAuth();
-  if (!userId) return { success: false, error: "Anda harus masuk terlebih dahulu." };
+  const user = await requireAuth();
+  if (!user) return { success: false, error: "Anda harus masuk terlebih dahulu." };
 
-  const admin = await isAdmin(userId);
-  if (!admin) return { success: false, error: "Hanya admin yang bisa menerbitkan set." };
+  if (!isAdmin(user.username)) return { success: false, error: "Hanya admin yang bisa menerbitkan set." };
 
   const set = await prisma.problemSet.findUnique({ where: { id } });
   if (!set) return { success: false, error: "Set tidak ditemukan." };

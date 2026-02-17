@@ -325,9 +325,11 @@ export async function getProblemBySetAndNumber(problemSetId: number, number: num
   });
 }
 
-export async function isAdmin(userId: number) {
-  const admin = await prisma.admin.findUnique({ where: { userId } });
-  return !!admin;
+export function isAdmin(username: string) {
+  const env = process.env.ADMIN_USERNAMES;
+  if (!env) throw new Error("ADMIN_USERNAMES env var is not set");
+  const admins = env.split(",").map((s) => s.trim());
+  return admins.includes(username);
 }
 
 // ─── User profile page ───────────────────────────────────────────────
