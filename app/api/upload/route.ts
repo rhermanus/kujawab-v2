@@ -37,8 +37,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const url = await uploadToR2(buffer, file.name, file.type);
-
-  return NextResponse.json({ url });
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const url = await uploadToR2(buffer, file.name, file.type);
+    return NextResponse.json({ url });
+  } catch (e) {
+    console.error("Upload failed:", e);
+    return NextResponse.json(
+      { error: "Upload failed" },
+      { status: 500 }
+    );
+  }
 }
