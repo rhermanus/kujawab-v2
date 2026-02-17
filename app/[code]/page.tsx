@@ -20,10 +20,10 @@ export default async function ProblemSetPage({
 
   if (!problemSet) notFound();
 
-  // Build a map of startNumber → extra description HTML
-  const extraDescMap = new Map<number, string>();
+  // Build a map of startNumber → extra description
+  const extraDescMap = new Map<number, { startNumber: number; endNumber: number; description: string }>();
   for (const ed of problemSet.extraDescriptions) {
-    extraDescMap.set(ed.startNumber, ed.description);
+    extraDescMap.set(ed.startNumber, ed);
   }
 
   return (
@@ -39,14 +39,20 @@ export default async function ProblemSetPage({
       <div className="space-y-8">
         {problemSet.problems.map((problem) => (
           <div key={problem.id}>
-            {problem.number != null && extraDescMap.has(problem.number) && (
-              <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-5">
-                <HtmlContent
-                  className=""
-                  html={extraDescMap.get(problem.number)!}
-                />
-              </div>
-            )}
+            {problem.number != null && extraDescMap.has(problem.number) && (() => {
+              const ed = extraDescMap.get(problem.number)!;
+              return (
+                <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-5">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">
+                    Deskripsi Untuk Soal Nomor {ed.startNumber} dan {ed.endNumber}
+                  </p>
+                  <HtmlContent
+                    className=""
+                    html={ed.description}
+                  />
+                </div>
+              );
+            })()}
 
             <div className="border rounded-lg p-6">
               <div className="flex gap-2 mb-4">

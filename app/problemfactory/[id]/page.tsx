@@ -97,6 +97,9 @@ export default async function SetEditorPage({
             <div key={num}>
               {extraDesc && (
                 <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-5">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2">
+                    Deskripsi Untuk Soal Nomor {extraDesc.startNumber} dan {extraDesc.endNumber}
+                  </p>
                   <HtmlContent className="" html={extraDesc.description} />
                 </div>
               )}

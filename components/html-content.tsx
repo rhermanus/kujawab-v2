@@ -18,6 +18,8 @@ function rewriteImageUrls(rawHtml: string): string {
     if (src.startsWith("/")) {
       // Normalize: collapse double slashes, decode HTML entities
       const normalized = src.replace(/\/\//g, "/").replace(/&amp;/g, "&");
+      // Already an /r2/ path (stored in DB after migration) → use as-is
+      if (normalized.startsWith("/r2/")) return `src="${normalized}"`;
       return `src="/r2${normalized}"`;
     }
     // External URLs → check mapping
