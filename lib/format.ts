@@ -3,6 +3,8 @@ export function profilePicUrl(path: string | null): string {
   // Full R2 URL stored in DB → rewrite to proxy path
   if (path.includes(".r2.dev/")) return `/r2/${path.split(".r2.dev/")[1]}`;
   if (path.startsWith("http")) return path;
+  // Already an /r2/ proxy path (e.g. from new uploads)
+  if (path.startsWith("/r2/")) return path;
   // Legacy relative path → serve via /r2/ rewrite proxy
   return `/r2${path}`;
 }
