@@ -32,7 +32,10 @@ function rewriteImageUrls(rawHtml: string): string {
 
 export default function HtmlContent({ html, className }: HtmlContentProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const processedHtml = rewriteImageUrls(html);
+  const processedHtml = rewriteImageUrls(html).replace(
+    /<img(?![^>]*loading=)/g,
+    '<img loading="lazy"'
+  );
 
   useEffect(() => {
     if (!ref.current) return;
