@@ -21,7 +21,7 @@ export default function ProblemEditor({
       onSubmit={async (html) => {
         const result = await saveProblemAction(problemSetId, number, html);
         if (result.success) {
-          router.push(`/problemfactory/${problemSetId}`);
+          router.push(`/problemfactory/${problemSetId}#problem-${number}`);
         }
         return result;
       }}
