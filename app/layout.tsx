@@ -44,13 +44,13 @@ export default function RootLayout({
             <Footer />
           </div>
         </SessionProvider>
+        {GA_ID && (
+          <>
+            <GoogleAnalytics gaId={GA_ID} />
+            <RouteChangeTracker />
+          </>
+        )}
       </body>
-      {GA_ID && (
-        <>
-          <GoogleAnalytics gaId={GA_ID} />
-          <RouteChangeTracker />
-        </>
-      )}
     </html>
   );
 }
