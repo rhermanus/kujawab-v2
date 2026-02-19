@@ -61,7 +61,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.profilePicture = (user as Record<string, unknown>).profilePicture as string | null;
       }
 
-      // Google sign-in: look up or create user in DB
+      // Google sign-in: look up user in DB
       if (account?.provider === "google" && profile?.email) {
         const email = profile.email;
         let dbUser = await prisma.user.findUnique({ where: { email } });
@@ -77,55 +77,69 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
               },
             });
           }
-        } else {
-          // Create new user from Google profile
-          const baseName = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 16);
-          let username = baseName;
-          let suffix = 1;
-          while (await prisma.user.findUnique({ where: { username } })) {
-            username = `${baseName}${suffix}`;
-            suffix++;
-          }
 
-          dbUser = await prisma.user.create({
-            data: {
-              firstName: profile.given_name ?? profile.name?.split(" ")[0] ?? "User",
-              lastName: profile.family_name ?? "",
-              username,
-              email,
-              confirmed: true,
-              oauth2Id: profile.sub,
-              oauth2Provider: "google",
-              profilePicture: profile.picture ?? "/profpic_placeholder.jpg",
-            },
-          });
-        }
-
-        token.id = String(dbUser.id);
-        token.username = dbUser.username;
-        token.firstName = dbUser.firstName;
-        token.name = `${dbUser.firstName} ${dbUser.lastName ?? ""}`.trim();
-        token.email = dbUser.email;
-        token.profilePicture = dbUser.profilePicture;
-      }
-
-      // Subsequent requests: refresh from DB
-      if (!user && !account && token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: Number(token.id) },
-          select: { username: true, firstName: true, lastName: true, profilePicture: true },
-        });
-        if (dbUser) {
+          token.id = String(dbUser.id);
           token.username = dbUser.username;
           token.firstName = dbUser.firstName;
           token.name = `${dbUser.firstName} ${dbUser.lastName ?? ""}`.trim();
+          token.email = dbUser.email;
           token.profilePicture = dbUser.profilePicture;
+          token.pendingRegistration = undefined;
+        } else {
+          // New Google user — mark as pending registration
+          token.pendingRegistration = {
+            email: profile.email,
+            firstName: profile.given_name ?? profile.name?.split(" ")[0] ?? "",
+            lastName: profile.family_name ?? "",
+            oauth2Id: profile.sub!,
+            oauth2Provider: "google",
+            profilePicture: profile.picture ?? "/profpic_placeholder.jpg",
+          };
+        }
+      }
+
+      // Subsequent requests: refresh from DB
+      if (!user && !account) {
+        if (token.id) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: Number(token.id) },
+            select: { username: true, firstName: true, lastName: true, profilePicture: true },
+          });
+          if (dbUser) {
+            token.username = dbUser.username;
+            token.firstName = dbUser.firstName;
+            token.name = `${dbUser.firstName} ${dbUser.lastName ?? ""}`.trim();
+            token.profilePicture = dbUser.profilePicture;
+          }
+        } else if (token.pendingRegistration) {
+          // Check if user completed registration since last token refresh
+          const pending = token.pendingRegistration as { email: string };
+          const dbUser = await prisma.user.findUnique({ where: { email: pending.email } });
+          if (dbUser) {
+            token.id = String(dbUser.id);
+            token.username = dbUser.username;
+            token.firstName = dbUser.firstName;
+            token.name = `${dbUser.firstName} ${dbUser.lastName ?? ""}`.trim();
+            token.email = dbUser.email;
+            token.profilePicture = dbUser.profilePicture;
+            token.pendingRegistration = undefined;
+          }
         }
       }
 
       return token;
     },
     session({ session, token }) {
+      if (token.pendingRegistration) {
+        session.pendingRegistration = token.pendingRegistration as {
+          email: string;
+          firstName: string;
+          lastName: string;
+          oauth2Id: string;
+          oauth2Provider: string;
+          profilePicture: string;
+        };
+      }
       session.user.id = token.id as string;
       session.user.username = token.username as string;
       session.user.firstName = token.firstName as string;

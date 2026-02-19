@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn } from "@/auth";
+import { signIn, auth } from "@/auth";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -84,4 +84,55 @@ export async function signupAction(formData: FormData) {
     }
     throw error;
   }
+}
+
+export async function completeGoogleRegistrationAction(formData: FormData) {
+  const session = await auth();
+  const pending = session?.pendingRegistration;
+  if (!pending) {
+    return { success: false, error: "Sesi pendaftaran tidak ditemukan atau sudah kedaluwarsa." };
+  }
+
+  const firstName = (formData.get("firstName") as string)?.trim();
+  const lastName = (formData.get("lastName") as string)?.trim() ?? "";
+  const username = (formData.get("username") as string)?.trim();
+
+  // Validation
+  if (!firstName || firstName.length > 50) {
+    return { success: false, error: "Nama depan wajib diisi (maks 50 karakter)." };
+  }
+  if (lastName.length > 50) {
+    return { success: false, error: "Nama belakang maks 50 karakter." };
+  }
+  if (!username || username.length > 20 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+    return { success: false, error: "Username wajib diisi (maks 20 karakter, hanya huruf, angka, dan underscore)." };
+  }
+
+  // Check uniqueness
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ email: pending.email }, { username }] },
+    select: { email: true, username: true },
+  });
+  if (existing) {
+    if (existing.email === pending.email) {
+      return { success: false, error: "Email sudah terdaftar." };
+    }
+    return { success: false, error: "Username sudah digunakan." };
+  }
+
+  // Create user with Google OAuth data
+  await prisma.user.create({
+    data: {
+      firstName,
+      lastName,
+      username,
+      email: pending.email,
+      confirmed: true,
+      oauth2Id: pending.oauth2Id,
+      oauth2Provider: pending.oauth2Provider,
+      profilePicture: pending.profilePicture,
+    },
+  });
+
+  return { success: true };
 }

@@ -6,6 +6,7 @@ import "./globals.css";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { RouteChangeTracker } from "@/components/analytics";
+import { PendingRegistrationRedirect } from "@/components/pending-registration-redirect";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
+          <PendingRegistrationRedirect />
           <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 flex flex-col">
             <Header />
             <div className="flex-1">{children}</div>
