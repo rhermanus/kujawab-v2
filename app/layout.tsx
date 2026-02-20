@@ -20,12 +20,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.kujawab.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: {
     default: "Kujawab",
     template: "%s — Kujawab",
   },
   description: "Kumpulan Soal dan Jawaban Olimpiade Sains",
+  openGraph: {
+    siteName: "Kujawab",
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+  },
 };
 
 export default function RootLayout({

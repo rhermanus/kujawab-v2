@@ -3,12 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserByUsername, getUserStats, getUserRecentAnswersPaginated, getFollowerCount, getFollowingCount } from "@/lib/queries";
+import { profilePicUrl } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params;
   const user = await getUserByUsername(decodeURIComponent(username));
   if (!user) return { title: "Pengguna" };
-  return { title: `${user.firstName} ${user.lastName}` };
+  const title = `${user.firstName} ${user.lastName}`;
+  const description = user.bio || `Profil ${title} di Kujawab`;
+  const images = user.profilePicture ? [profilePicUrl(user.profilePicture)] : [];
+  return {
+    title,
+    description,
+    alternates: { canonical: `/user/${user.username}` },
+    openGraph: { title, description, type: "profile", images },
+  };
 }
 import { getFollowStatus } from "@/lib/follow-actions";
 import { joinDate } from "@/lib/format";

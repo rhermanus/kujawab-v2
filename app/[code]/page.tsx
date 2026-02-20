@@ -2,12 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProblemSetByCode } from "@/lib/queries";
+import { categoryLabel } from "@/lib/format";
 import HtmlContent from "@/components/html-content";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   const { code } = await params;
   const problemSet = await getProblemSetByCode(code);
-  return { title: problemSet?.name ?? "Soal" };
+  if (!problemSet) return { title: "Soal" };
+  const description = `${problemSet.problemCount} soal ${categoryLabel(problemSet.category ?? "")} — ${problemSet.name}`;
+  return {
+    title: problemSet.name,
+    description,
+    alternates: { canonical: `/${code.toUpperCase()}` },
+    openGraph: { title: problemSet.name, description, type: "website" },
+  };
 }
 
 export default async function ProblemSetPage({

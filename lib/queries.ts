@@ -325,6 +325,21 @@ export async function getFollowingCount(userId: number) {
   return prisma.follow.count({ where: { followerId: userId } });
 }
 
+// ─── Sitemap ─────────────────────────────────────────────────────────
+
+export async function getSitemapData() {
+  const rows = await prisma.$queryRaw<
+    { code: string; number: number | null }[]
+  >`
+    SELECT ps.code, p.number
+    FROM problemsets ps
+    LEFT JOIN problems p ON p.problemset_id = ps.id
+    WHERE ps.status = 'PUBLISHED' AND ps.code IS NOT NULL
+    ORDER BY ps.code, p.number
+  `;
+  return rows;
+}
+
 // ─── Problem Factory ──────────────────────────────────────────────────
 
 export async function getDraftProblemSets() {

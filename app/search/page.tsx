@@ -5,7 +5,11 @@ import { searchProblems } from "@/lib/queries";
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ q?: string }> }): Promise<Metadata> {
   const { q } = await searchParams;
   const query = q?.trim();
-  return { title: query ? `Hasil pencarian "${query}"` : "Pencarian" };
+  return {
+    title: query ? `Hasil pencarian "${query}"` : "Pencarian",
+    description: "Cari soal olimpiade sains di Kujawab",
+    robots: { index: false, follow: true },
+  };
 }
 import HtmlContent from "@/components/html-content";
 

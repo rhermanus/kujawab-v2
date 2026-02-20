@@ -3,7 +3,12 @@ import { getPublishedProblemSetsByCategory, getTopContributors, getRecentAnswers
 import { timeAgo } from "@/lib/format";
 import HomeContent from "@/components/home-content";
 
-export const metadata: Metadata = { title: "Beranda" };
+export const metadata: Metadata = {
+  title: { absolute: "Kujawab — Kumpulan Soal dan Jawaban Olimpiade Sains" },
+  description:
+    "Bank soal dan jawaban olimpiade sains Indonesia: Komputer, Matematika, Fisika, Kimia, Biologi, Astronomi, Kebumian, Ekonomi, dan Geografi. Lengkap dari tingkat Kabupaten hingga Nasional.",
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   const [problemSetsByCategory, topContributors, recentAnswersRaw] = await Promise.all([

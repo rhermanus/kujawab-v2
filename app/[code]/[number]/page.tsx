@@ -7,7 +7,14 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
   const { code, number } = await params;
   const result = await getProblemByCodeAndNumber(code, parseInt(number));
   if (!result) return { title: "Soal" };
-  return { title: `${result.problemSet.name}, No. ${number}` };
+  const title = `${result.problemSet.name}, No. ${number}`;
+  const description = `Soal nomor ${number} dari ${result.problemSet.name} — ${result.answers.length} jawaban`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/${code.toUpperCase()}/${number}` },
+    openGraph: { title, description, type: "article" },
+  };
 }
 import { timeAgo } from "@/lib/format";
 import ProfilePic from "@/components/profile-pic";
@@ -18,6 +25,12 @@ import VoteButtons from "@/components/vote-buttons";
 import CommentSection from "@/components/comment-section";
 import { auth } from "@/auth";
 import { ChevronLeft, ChevronRight, PenLine } from "lucide-react";
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.kujawab.com";
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").replace(/&[^;]+;/g, " ").replace(/\s+/g, " ").trim();
+}
 
 export default async function ProblemPage({
   params,
@@ -47,8 +60,51 @@ export default async function ProblemPage({
   const prevNumber = currentIdx > 0 ? navNumbers[currentIdx - 1] : null;
   const nextNumber = currentIdx < navNumbers.length - 1 ? navNumbers[currentIdx + 1] : null;
 
+  // JSON-LD structured data (QAPage)
+  const questionText = problems.map((p) => stripHtml(p.description)).join(" ");
+  const sortedAnswers = answers.map((a) => ({
+    text: stripHtml(a.description),
+    author: `${a.author.firstName} ${a.author.lastName}`,
+    votes: a.votes.reduce((sum, v) => sum + v.value, 0),
+    date: a.createdAt.toISOString(),
+  }));
+  const topAnswer = sortedAnswers[0];
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: `${problemSet.name}, Nomor ${numberLabel}`,
+      text: questionText.slice(0, 500),
+      answerCount: answers.length,
+      ...(topAnswer && {
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: topAnswer.text.slice(0, 500),
+          author: { "@type": "Person", name: topAnswer.author },
+          upvoteCount: topAnswer.votes,
+          dateCreated: topAnswer.date,
+        },
+      }),
+      ...(sortedAnswers.length > 1 && {
+        suggestedAnswer: sortedAnswers.slice(1).map((a) => ({
+          "@type": "Answer",
+          text: a.text.slice(0, 500),
+          author: { "@type": "Person", name: a.author },
+          upvoteCount: a.votes,
+          dateCreated: a.date,
+        })),
+      }),
+    },
+  };
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="mb-6">
         <Link href={`/${code}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
           ← Kembali ke {problemSet.name}
